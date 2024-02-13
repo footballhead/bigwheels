@@ -156,7 +156,7 @@ public:
         grfx::Image**    ppImage,
         grfx::Semaphore* pImageReadySemaphore) override;
 
-    virtual bool IsSwapchain() const { return true; }
+    virtual bool IsSwapchain() const override { return true; }
 
     void SetSwapchain(grfx::Swapchain* pSwapchain);
 

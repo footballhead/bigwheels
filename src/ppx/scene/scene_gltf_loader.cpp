@@ -2488,7 +2488,7 @@ ppx::Result GltfLoader::LoadSampler(
         pGltfSampler,
         ppTargetSampler);
     if (Failed(ppxres)) {
-        ppxres;
+        return ppxres;
     }
 
     return ppx::SUCCESS;
@@ -2544,7 +2544,7 @@ ppx::Result GltfLoader::LoadImage(
         pGltfImage,
         ppTargetImage);
     if (Failed(ppxres)) {
-        ppxres;
+        return ppxres;
     }
 
     return ppx::SUCCESS;
@@ -2600,7 +2600,7 @@ ppx::Result GltfLoader::LoadTexture(
         pGltfTexture,
         ppTargetTexture);
     if (Failed(ppxres)) {
-        ppxres;
+        return ppxres;
     }
 
     return ppx::SUCCESS;
@@ -2657,7 +2657,7 @@ ppx::Result GltfLoader::LoadMaterial(
         pGltfMaterial,
         ppTargetMaterial);
     if (Failed(ppxres)) {
-        ppxres;
+        return ppxres;
     }
 
     return ppx::SUCCESS;

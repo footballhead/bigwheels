@@ -274,6 +274,10 @@ ppx::Result MaterialPipelineArgs::InitializeDescriptorSet(grfx::Device* pDevice)
                 case grfx::DESCRIPTOR_TYPE_RO_STRUCTURED_BUFFER : createInfo.structuredBuffer += binding.arrayCount; break;
                 case grfx::DESCRIPTOR_TYPE_SAMPLER              : createInfo.sampler += binding.arrayCount; break;
                 case grfx::DESCRIPTOR_TYPE_SAMPLED_IMAGE        : createInfo.sampledImage += binding.arrayCount; break;
+                default:
+                    PPX_LOG_WARN("Found a descriptor binding with unsupported "
+                                 "type " << binding.type << "; ignoring");
+                    break;
             }
             // clang-format on
         }
