@@ -295,6 +295,7 @@ ArcballCamera::ArcballCamera(
     float         farClip)
     : PerspCamera(eye, target, up, horizFovDegrees, aspect, nearClip, farClip)
 {
+    // TODO: Properly initialize member variables so that subsequent LookAt, etc don't fail
 }
 
 void ArcballCamera::UpdateCamera()

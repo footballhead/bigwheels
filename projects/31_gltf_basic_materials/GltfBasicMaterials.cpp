@@ -24,6 +24,13 @@ const grfx::Api kApi = grfx::API_DX_12_0;
 const grfx::Api kApi = grfx::API_VK_1_1;
 #endif
 
+namespace {
+
+// Use an interactive camera instead of any in the scene
+constexpr bool kForceArcballCamera = false;
+
+}
+
 void GltfBasicMaterialsApp::Config(ppx::ApplicationSettings& settings)
 {
     settings.appName                    = "gltf_basic_materials";
@@ -62,15 +69,21 @@ void GltfBasicMaterialsApp::Setup()
     // Load GLTF scene
     {
         scene::GltfLoader* pLoader = nullptr;
-        //
         PPX_CHECKED_CALL(scene::GltfLoader::Create(
             GetAssetPath("scene_renderer/scenes/tests/gltf_test_basic_materials.glb"),
-            // GetAssetPath("scene_renderer/scenes/tests/gltf_test_materials.gltf"),
             nullptr,
             &pLoader));
 
         PPX_CHECKED_CALL(pLoader->LoadScene(GetDevice(), 0, &mScene));
-        PPX_ASSERT_MSG((mScene->GetCameraNodeCount() > 0), "scene doesn't have camera nodes");
+        if (mScene->GetCameraNodeCount() == 0 || kForceArcballCamera) {
+            PPX_LOG_WARN("scene doesn't have camera nodes; using ArcballCamera");
+            // Initial values coped from projects/arcball_camera/main.cpp
+            // TODO: Constructor produces different results compared to LookAt + SetPerspective
+            // mArcballCamera = ArcballCamera(float3(4, 5, 8), float3(0, 0, 0), float3(0, 1, 0), 60.0f, GetWindowAspect());
+            mArcballCamera = ArcballCamera();
+            mArcballCamera->LookAt(float3(4, 5, 8), float3(0, 0, 0), float3(0, 1, 0));
+            mArcballCamera->SetPerspective(60.0f, GetWindowAspect());
+        }
         PPX_ASSERT_MSG((mScene->GetMeshNodeCount() > 0), "scene doesn't have mesh nodes");
 
         delete pLoader;
@@ -214,6 +227,43 @@ void GltfBasicMaterialsApp::Shutdown()
     delete mPipelineArgs;
 }
 
+void GltfBasicMaterialsApp::MouseMove(int32_t x, int32_t y, int32_t dx, int32_t dy, uint32_t buttons)
+{
+    if (!mArcballCamera.has_value()) {
+        return;
+    }
+
+    if (buttons & ppx::MOUSE_BUTTON_LEFT) {
+        int32_t prevX = x - dx;
+        int32_t prevY = y - dy;
+
+        float2 prevPos = GetNormalizedDeviceCoordinates(prevX, prevY);
+        float2 curPos  = GetNormalizedDeviceCoordinates(x, y);
+
+        mArcballCamera->Rotate(prevPos, curPos);
+    }
+    else if (buttons & ppx::MOUSE_BUTTON_RIGHT) {
+        int32_t prevX = x - dx;
+        int32_t prevY = y - dy;
+
+        float2 prevPos = GetNormalizedDeviceCoordinates(prevX, prevY);
+        float2 curPos  = GetNormalizedDeviceCoordinates(x, y);
+        float2 delta   = curPos - prevPos;
+
+        mArcballCamera->Pan(delta);
+    }
+}
+
+void GltfBasicMaterialsApp::Scroll(float dx, float dy)
+{
+    if (!mArcballCamera.has_value()) {
+        return;
+    }
+
+    mArcballCamera->Zoom(dy / 2.0f);
+}
+
+
 void GltfBasicMaterialsApp::Render()
 {
     PerFrame& frame = mPerFrame[0];
@@ -228,8 +278,7 @@ void GltfBasicMaterialsApp::Render()
     // Wait for and reset image acquired fence
     PPX_CHECKED_CALL(frame.imageAcquiredFence->WaitAndReset());
 
-    // Update camera params
-    mPipelineArgs->SetCameraParams(mScene->GetCameraNode(0)->GetCamera());
+    mPipelineArgs->SetCameraParams(mArcballCamera.has_value() ? &mArcballCamera.value() : mScene->GetCameraNode(0)->GetCamera());
 
     // Update instance params
     {

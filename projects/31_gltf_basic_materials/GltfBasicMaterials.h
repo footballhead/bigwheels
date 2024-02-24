@@ -29,6 +29,8 @@ public:
     virtual void Config(ppx::ApplicationSettings& settings) override;
     virtual void Setup() override;
     virtual void Shutdown() override;
+    void MouseMove(int32_t x, int32_t y, int32_t dx, int32_t dy, uint32_t buttons) override;
+    void Scroll(float dx, float dy) override;
     virtual void Render() override;
 
 private:
@@ -57,6 +59,9 @@ private:
 
     ppx::grfx::TexturePtr mIBLIrrMap;
     ppx::grfx::TexturePtr mIBLEnvMap;
+
+    // valid only if the glTF scene does not have a camera
+    std::optional<ppx::ArcballCamera> mArcballCamera;
 };
 
 #endif // GLTF_BASIC_MATERIALS_H
