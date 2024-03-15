@@ -3,22 +3,19 @@
 Test results are written to build/test_projects_results"""
 
 import datetime
+import os
 import subprocess
 import sys
 from pathlib import Path
 
-"""The location of this script on the filesystem"""
-_THIS_FILE_PATH = Path(__file__).absolute()
-"""The directory of this script on the filesystem"""
-_THIS_PATH = _THIS_FILE_PATH.parent
 """The top directory of the checkout"""
-_PROJECT_ROOT = _THIS_PATH.parent
+_PROJECT_ROOT = Path(__file__).absolute().parent.parent
 
 """Root of all compiled output"""
 _DEFAULT_BUILD_PATH = _PROJECT_ROOT / 'build'
-# TODO windows vs Linux binpath
+# TODO windows (//build/bin/Debug) vs Linux (//build/bin) binpath
 """Where executable binaries are stored"""
-_DEFAULT_BIN_PATH = _DEFAULT_BUILD_PATH / 'bin' / 'Debug'
+_DEFAULT_BIN_PATH = _DEFAULT_BUILD_PATH / 'bin'
 """Place to put test results"""
 _DEFAULT_RESULTS_PATH = _DEFAULT_BUILD_PATH / 'test_projects_results'
 
@@ -41,7 +38,7 @@ def is_executable(path: Path) -> bool:
     Returns:
         True if executable, False otherwise
     """
-    return path.suffix == '.exe'
+    return os.access(path, os.X_OK)
 
 
 # TODO type annotation
@@ -75,7 +72,7 @@ def main() -> int:
         test_start_time = datetime.datetime.now()
         bin = targets[i]
         test_name = bin.stem
-        print(f'TEST {i}/{len(targets)}: {test_name}')
+        print(f'TEST {i+1}/{len(targets)}: {test_name}')
 
         if test_name in _NOT_A_TEST:
             print(f'{test_name}: SKIP (NOT A TEST)')
@@ -122,7 +119,9 @@ def main() -> int:
     else:
         print('All passed!')
 
-    return 0
+    print(f'See {_DEFAULT_RESULTS_PATH} for logs and screenshots')
+
+    return 1 if len(failed_tests) > 0 else 0
 
 
 if __name__ == '__main__':
