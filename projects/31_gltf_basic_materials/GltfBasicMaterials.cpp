@@ -36,7 +36,6 @@ void GltfBasicMaterialsApp::Config(ppx::ApplicationSettings& settings)
     settings.appName                    = "gltf_basic_materials";
     settings.enableImGui                = true;
     settings.grfx.api                   = kApi;
-    settings.grfx.enableDebug           = true;
     settings.window.width               = 1920 * 1;
     settings.window.height              = 1080 * 1;
     settings.window.resizable           = false;
