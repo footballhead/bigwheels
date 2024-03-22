@@ -34,11 +34,7 @@ constexpr bool kForceArcballCamera = false;
 void GltfBasicMaterialsApp::Config(ppx::ApplicationSettings& settings)
 {
     settings.appName                    = "gltf_basic_materials";
-    settings.enableImGui                = true;
     settings.grfx.api                   = kApi;
-    settings.window.width               = 1920 * 1;
-    settings.window.height              = 1080 * 1;
-    settings.window.resizable           = false;
     settings.grfx.swapchain.depthFormat = grfx::FORMAT_D32_FLOAT;
     settings.allowThirdPartyAssets      = true;
 }
@@ -67,9 +63,10 @@ void GltfBasicMaterialsApp::Setup()
 
     // Load GLTF scene
     {
+        const std::string defaultScene = "scene_renderer/scenes/tests/gltf_test_basic_materials.glb";
         scene::GltfLoader* pLoader = nullptr;
         PPX_CHECKED_CALL(scene::GltfLoader::Create(
-            GetAssetPath("scene_renderer/scenes/tests/gltf_test_basic_materials.glb"),
+            GetAssetPath(GetExtraOptions().GetExtraOptionValueOrDefault("gltf-scene-file", defaultScene)),
             nullptr,
             &pLoader));
 
@@ -82,6 +79,7 @@ void GltfBasicMaterialsApp::Setup()
             mArcballCamera = ArcballCamera();
             mArcballCamera->LookAt(float3(4, 5, 8), float3(0, 0, 0), float3(0, 1, 0));
             mArcballCamera->SetPerspective(60.0f, GetWindowAspect());
+            // TODO fit to bounding box?
         }
         PPX_ASSERT_MSG((mScene->GetMeshNodeCount() > 0), "scene doesn't have mesh nodes");
 
