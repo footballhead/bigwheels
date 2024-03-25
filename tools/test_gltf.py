@@ -3,6 +3,7 @@ import unittest
 import json
 import subprocess
 import os
+import shutil
 
 """Bigwheels checkout root"""
 _PROJECT_ROOT = Path(__file__).parent.parent
@@ -25,10 +26,8 @@ def _load_json(path: Path):
 def _make_report(path: Path, models_index):
     """Generate an HTML summary of the test run with screenshot comparison"""
 
-    # TODO: Consider turning PGM to PNG here instead of during the test
-
     report = '<html><body><table>'
-    report += '<thead><tr><th>Label</th><th>glTF-Sample-Assets Screenshot</th><th>BigWheels Screenshot</th></tr></thead>'
+    report += '<thead><tr><th>Label</th><th>glTF-Sample-Assets Screenshot</th><th>BigWheels Screenshot</th><th>BigWheels Log</th></tr></thead>'
     report += '<tbody>'
     for model_spec in models_index:
         # human-readable
@@ -39,18 +38,34 @@ def _make_report(path: Path, models_index):
         variants = model_spec['variants']
 
         for variant_name in variants:
-            variant_file = variants[variant_name]
-            report += '<tr>'
-            report += f'<td>{label} ({variant_name})</td>'
-            report += f'<td><img src="{str(_GLTF_SAMPLE_ASSETS)}/Models/{name}/{screenshot}"></td>'
-            report += f'<td><img src="{str(_RESULTS_PATH)}/{name}-{variant_name}/screenshot_frame_59.png"></td>'
-            report += '</tr>'
+            subtest_results_name = f'{name}-{variant_name}'
+            subtest_results_path = _RESULTS_PATH / subtest_results_name
+
+            if subtest_results_path.exists():
+                # TODO use knobs to give the actual PPM screenshot a better name
+                # Browsers don't have great PPM support so use PNG
+                subprocess.run(
+                    ['convert', 'screenshot_frame_59.ppm', 'actual.png'],
+                    cwd=subtest_results_path)
+
+                # Include the glTF-Sample-Assets screenshot into the report so it is self-containted
+                expected_screenshot_path = _GLTF_SAMPLE_ASSETS / 'Models' / name / screenshot
+                shutil.copy2(
+                    expected_screenshot_path,
+                    subtest_results_path / f"expected{expected_screenshot_path.suffix}")
+
+                report += '<tr>'
+                report += f'<td>{label} ({variant_name})</td>'
+                # Use relative paths so we can zip up the results folder and share
+                report += f'<td><img width="640px" src="{subtest_results_name}/expected{expected_screenshot_path.suffix}"></td>'
+                report += f'<td><img width="640px" src="{subtest_results_name}/actual.png"></td>'
+                report += f'<td><a href="{subtest_results_name}/ppx.log">ppx.log</a></td>'
+                report += '</tr>'
 
     report += '</tbody>'
     report += '</table></body></html>'
 
     path.write_text(report)
-
 
 
 class GltfSampleAssetsTestCase(unittest.TestCase):
@@ -81,11 +96,6 @@ class GltfSampleAssetsTestCase(unittest.TestCase):
 
             self.assertEqual(process.returncode, 0)
 
-            # Make a PNG for the report (consider doing this outside the test)
-            subprocess.run(
-                ['convert', 'screenshot_frame_59.ppm', 'screenshot_frame_59.png'],
-                cwd=subtest_results_path)
-
     def test_all(self):
         """Opens all models in glTF-Sample-Assets.
         
@@ -104,4 +114,7 @@ class GltfSampleAssetsTestCase(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    # models_index = _load_json(
+    #     _GLTF_SAMPLE_ASSETS / 'Models' / 'model-index.json')
+    # _make_report(_RESULTS_PATH / 'report.html', models_index)
     unittest.main()
