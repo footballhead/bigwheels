@@ -17,7 +17,10 @@ _RESULTS_PATH = _BUILD_ROOT / 'test_gltf_results'
 _TEST_PROGRAM = _BUILD_ROOT / 'bin' / 'vk_31_gltf_basic_materials'
 """Where the glTF-Sample-Assets checkout is"""
 _GLTF_SAMPLE_ASSETS = _PROJECT_ROOT / 'third_party' / 'assets' / 'glTF-Sample-Assets'
-
+"""Filename of the screenshot produced by the program under test"""
+_OUTPUT_SCREENSHOT_NAME = 'actual.ppm'
+"""How many frames to render before quitting"""
+_FRAME_COUNT = 2
 
 def _load_json(path: Path):
     """Returns a Python dict representation of the JSON in a file."""
@@ -53,10 +56,10 @@ def _make_report(path: Path, models_index):
             subtest_results_path = _RESULTS_PATH / subtest_results_name
 
             if subtest_results_path.exists():
-                # TODO use knobs to give the actual PPM screenshot a better name
-                # Browsers don't have great PPM support so use PNG
+                # Browsers don't have great PPM support so use PNG.
+                # Use unix command since Python doesn't have great image support.
                 subprocess.run(
-                    ['convert', 'screenshot_frame_59.ppm', 'actual.png'],
+                    ['convert', _OUTPUT_SCREENSHOT_NAME, 'actual.png'],
                     cwd=subtest_results_path)
 
                 # Include the glTF-Sample-Assets screenshot into the report so it is self-containted
@@ -98,11 +101,13 @@ class GltfSampleAssetsTestCase(unittest.TestCase):
             os.mkdir(subtest_results_path)
 
             bigwheels_asset_path = f'glTF-Sample-Assets/Models/{name}/{variant_name}/{variant_file}'
+            # TODO: run headless to avoid taking control of the host computer
             command = [
                 str(_TEST_PROGRAM),
-                '--frame-count', '60',
-                '--screenshot-frame-number', '59',
-                '--gltf-scene-file', bigwheels_asset_path]
+                '--frame-count', str(_FRAME_COUNT),
+                '--screenshot-frame-number', str(_FRAME_COUNT-1),
+                '--gltf-scene-file', bigwheels_asset_path,
+                '--screenshot-path', _OUTPUT_SCREENSHOT_NAME]
             process = subprocess.run(command, cwd=subtest_results_path)
 
             self.assertEqual(process.returncode, 0)

@@ -15,6 +15,7 @@
 #ifndef GLTF_BASIC_MATERIALS_H
 #define GLTF_BASIC_MATERIALS_H
 
+#include "ppx/camera.h"
 #include "ppx/ppx.h"
 #include "ppx/scene/scene_material.h"
 #include "ppx/scene/scene_mesh.h"
@@ -61,7 +62,7 @@ private:
     ppx::grfx::TexturePtr mIBLEnvMap;
 
     // valid only if the glTF scene does not have a camera
-    std::optional<ppx::ArcballCamera> mArcballCamera;
+    std::optional<ppx::PerspCamera> mPerspectiveCamera;
 };
 
 #endif // GLTF_BASIC_MATERIALS_H

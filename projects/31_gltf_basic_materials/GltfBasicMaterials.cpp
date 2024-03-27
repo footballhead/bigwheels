@@ -14,6 +14,8 @@
 
 #include "GltfBasicMaterials.h"
 #include "ppx/bounding_volume.h"
+#include "ppx/camera.h"
+#include "ppx/math_config.h"
 #include "ppx/scene/scene_gltf_loader.h"
 #include "ppx/graphics_util.h"
 #include "ppx/scene/scene_node.h"
@@ -32,14 +34,33 @@ namespace {
 // Use an interactive camera instead of any in the scene
 constexpr bool kForceArcballCamera = false;
 
+ppx::AABB GetTransformedMeshNodeBoundingBox(const scene::MeshNode& meshNode)
+{
+    const float4x4 transform = meshNode.GetEvaluatedMatrix();
+    const ppx::AABB meshBoundingBox = meshNode.GetMesh()->GetBoundingBox();
+
+    float3 obbVertices[8] = {};
+    meshBoundingBox.Transform(transform, obbVertices);
+
+    ppx::AABB transformedBoundingBox;
+    transformedBoundingBox.Expand(obbVertices[0]);
+    transformedBoundingBox.Expand(obbVertices[1]);
+    transformedBoundingBox.Expand(obbVertices[2]);
+    transformedBoundingBox.Expand(obbVertices[3]);
+    transformedBoundingBox.Expand(obbVertices[4]);
+    transformedBoundingBox.Expand(obbVertices[5]);
+    transformedBoundingBox.Expand(obbVertices[6]);
+    transformedBoundingBox.Expand(obbVertices[7]);
+    return transformedBoundingBox;
+}
+
 ppx::AABB GetSceneBoundingBox(const scene::Scene& scene)
 {
     ppx::AABB sceneBoundingBox;
     for (uint32_t i = 0; i < scene.GetMeshNodeCount(); ++i) {
-        // TODO: Account for transforms of the nodes?
-        const ppx::AABB meshBoundingBox = scene.GetMeshNode(i)->GetMesh()->GetBoundingBox();
-        sceneBoundingBox.Expand(meshBoundingBox.GetMax());
-        sceneBoundingBox.Expand(meshBoundingBox.GetMin());
+        const ppx::AABB transformedMeshNodeBoundingBox = GetTransformedMeshNodeBoundingBox(*scene.GetMeshNode(i));
+        sceneBoundingBox.Expand(transformedMeshNodeBoundingBox.GetMax());
+        sceneBoundingBox.Expand(transformedMeshNodeBoundingBox.GetMin());
     }
     return sceneBoundingBox;
 }
@@ -91,12 +112,12 @@ void GltfBasicMaterialsApp::Setup()
             // Initial values coped from projects/arcball_camera/main.cpp
             // TODO: Constructor produces different results compared to LookAt + SetPerspective
             // mArcballCamera = ArcballCamera(float3(4, 5, 8), float3(0, 0, 0), float3(0, 1, 0), 60.0f, GetWindowAspect());
-            mArcballCamera = ArcballCamera();
-            mArcballCamera->LookAt(float3(4, 5, 8), float3(0, 0, 0), float3(0, 1, 0));
-            mArcballCamera->SetPerspective(60.0f, GetWindowAspect());
+            mPerspectiveCamera = PerspCamera();
+            mPerspectiveCamera->SetPerspective(60.0f, GetWindowAspect());
+            mPerspectiveCamera->LookAt(float3(4, 5, 8), float3(0, 0, 0), float3(0, 1, 0));
 
             const ppx::AABB sceneBoundingBox = GetSceneBoundingBox(*mScene);
-            mArcballCamera->FitToBoundingBox(sceneBoundingBox.GetMin(), sceneBoundingBox.GetMax());
+            mPerspectiveCamera->FitToBoundingBox(sceneBoundingBox.GetMin(), sceneBoundingBox.GetMax());
         }
         PPX_ASSERT_MSG((mScene->GetMeshNodeCount() > 0), "scene doesn't have mesh nodes");
 
@@ -243,6 +264,7 @@ void GltfBasicMaterialsApp::Shutdown()
 
 void GltfBasicMaterialsApp::MouseMove(int32_t x, int32_t y, int32_t dx, int32_t dy, uint32_t buttons)
 {
+#if 0
     if (!mArcballCamera.has_value()) {
         return;
     }
@@ -266,15 +288,18 @@ void GltfBasicMaterialsApp::MouseMove(int32_t x, int32_t y, int32_t dx, int32_t 
 
         mArcballCamera->Pan(delta);
     }
+#endif
 }
 
 void GltfBasicMaterialsApp::Scroll(float dx, float dy)
 {
+#if 0
     if (!mArcballCamera.has_value()) {
         return;
     }
 
     mArcballCamera->Zoom(dy / 2.0f);
+#endif
 }
 
 
@@ -292,7 +317,7 @@ void GltfBasicMaterialsApp::Render()
     // Wait for and reset image acquired fence
     PPX_CHECKED_CALL(frame.imageAcquiredFence->WaitAndReset());
 
-    mPipelineArgs->SetCameraParams(mArcballCamera.has_value() ? &mArcballCamera.value() : mScene->GetCameraNode(0)->GetCamera());
+    mPipelineArgs->SetCameraParams(mPerspectiveCamera.has_value() ? &mPerspectiveCamera.value() : mScene->GetCameraNode(0)->GetCamera());
 
     // Update instance params
     {
