@@ -4,6 +4,8 @@ import json
 import subprocess
 import os
 import shutil
+import datetime
+import socket
 
 """Bigwheels checkout root"""
 _PROJECT_ROOT = Path(__file__).parent.parent
@@ -23,10 +25,19 @@ def _load_json(path: Path):
         return json.load(fd)
 
 
+def _get_git_head_commit():
+    process = subprocess.run(['git', 'rev-parse', 'HEAD'], capture_output=True)
+    return process.stdout.decode()
+
+
 def _make_report(path: Path, models_index):
     """Generate an HTML summary of the test run with screenshot comparison"""
 
-    report = '<html><body><table>'
+    report = '<html><body>'
+    report += f'<p>Time: {datetime.datetime.now()}</p>'
+    report += f'<p>SHA: {_get_git_head_commit()}</p>'
+    report += f'<p>Host: {socket.getfqdn()}</p>'
+    report += '<table>'
     report += '<thead><tr><th>Label</th><th>glTF-Sample-Assets Screenshot</th><th>BigWheels Screenshot</th><th>BigWheels Log</th></tr></thead>'
     report += '<tbody>'
     for model_spec in models_index:

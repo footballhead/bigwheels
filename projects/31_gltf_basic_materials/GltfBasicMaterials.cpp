@@ -13,8 +13,11 @@
 // limitations under the License.
 
 #include "GltfBasicMaterials.h"
+#include "ppx/bounding_volume.h"
 #include "ppx/scene/scene_gltf_loader.h"
 #include "ppx/graphics_util.h"
+#include "ppx/scene/scene_node.h"
+#include "ppx/scene/scene_scene.h"
 
 using namespace ppx;
 
@@ -28,6 +31,18 @@ namespace {
 
 // Use an interactive camera instead of any in the scene
 constexpr bool kForceArcballCamera = false;
+
+ppx::AABB GetSceneBoundingBox(const scene::Scene& scene)
+{
+    ppx::AABB sceneBoundingBox;
+    for (uint32_t i = 0; i < scene.GetMeshNodeCount(); ++i) {
+        // TODO: Account for transforms of the nodes?
+        const ppx::AABB meshBoundingBox = scene.GetMeshNode(i)->GetMesh()->GetBoundingBox();
+        sceneBoundingBox.Expand(meshBoundingBox.GetMax());
+        sceneBoundingBox.Expand(meshBoundingBox.GetMin());
+    }
+    return sceneBoundingBox;
+}
 
 }
 
@@ -79,7 +94,9 @@ void GltfBasicMaterialsApp::Setup()
             mArcballCamera = ArcballCamera();
             mArcballCamera->LookAt(float3(4, 5, 8), float3(0, 0, 0), float3(0, 1, 0));
             mArcballCamera->SetPerspective(60.0f, GetWindowAspect());
-            // TODO fit to bounding box?
+
+            const ppx::AABB sceneBoundingBox = GetSceneBoundingBox(*mScene);
+            mArcballCamera->FitToBoundingBox(sceneBoundingBox.GetMin(), sceneBoundingBox.GetMax());
         }
         PPX_ASSERT_MSG((mScene->GetMeshNodeCount() > 0), "scene doesn't have mesh nodes");
 
