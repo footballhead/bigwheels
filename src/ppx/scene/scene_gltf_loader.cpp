@@ -28,6 +28,8 @@
 namespace ppx {
 namespace scene {
 
+namespace {
+
 #define GLTF_LOD_CLAMP_NONE 1000.0f
 
 enum GltfTextureFilter
@@ -351,6 +353,49 @@ static const void* GetStartAddress(
     return static_cast<const void*>(pAccessorDataStart);
 }
 
+// "When texture.sampler is undefined, a sampler with repeat wrapping (in both directions) and auto filtering MUST be used."
+// "auto filtering" means whatever we want it to mean (https://github.com/KhronosGroup/glTF/issues/2096)
+ppx::Result MakeDefaultSampler(grfx::Device& device, scene::SamplerRef& outSampler) {
+    grfx::SamplerCreateInfo createInfo = {};
+    createInfo.magFilter               = grfx::FILTER_LINEAR;
+    createInfo.minFilter               = grfx::FILTER_LINEAR;
+    createInfo.mipmapMode              = grfx::SAMPLER_MIPMAP_MODE_LINEAR; // @TODO: add option to control this
+    createInfo.addressModeU            = grfx::SAMPLER_ADDRESS_MODE_REPEAT;
+    createInfo.addressModeV            = grfx::SAMPLER_ADDRESS_MODE_REPEAT;
+    createInfo.addressModeW            = grfx::SAMPLER_ADDRESS_MODE_REPEAT;
+    createInfo.mipLodBias              = 0.0f;
+    createInfo.anisotropyEnable        = false;
+    createInfo.maxAnisotropy           = 0.0f;
+    createInfo.compareEnable           = false;
+    createInfo.compareOp               = grfx::COMPARE_OP_NEVER;
+    createInfo.minLod                  = 0.0f;
+    createInfo.maxLod                  = GLTF_LOD_CLAMP_NONE;
+    createInfo.borderColor             = grfx::BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+
+    grfx::Sampler* pGrfxSampler = nullptr;
+    if (const ppx::Result ppxres = device.CreateSampler(&createInfo, &pGrfxSampler); Failed(ppxres)) {
+        return ppxres;
+    }
+
+    auto pSampler = new scene::Sampler(pGrfxSampler);
+    if (pSampler == nullptr) {
+        device.DestroySampler(pGrfxSampler);
+        return ppx::ERROR_ALLOCATION_FAILED;
+    }
+
+    pSampler->SetName("Default GLTF Sampler");
+
+    outSampler = scene::MakeRef(pSampler);
+    if (!outSampler) {
+        delete pSampler;
+        return ppx::ERROR_ALLOCATION_FAILED;
+    }
+
+    return ppx::SUCCESS;
+}
+
+}
+
 // -------------------------------------------------------------------------------------------------
 // GltfMaterialSelector
 // -------------------------------------------------------------------------------------------------
@@ -624,8 +669,24 @@ ppx::Result GltfLoader::FetchSamplerInternal(
     const cgltf_sampler*                  pGltfSampler,
     scene::SamplerRef&                    outSampler)
 {
-    if (IsNull(loadParams.pDevice) || IsNull(loadParams.pResourceManager) || IsNull(pGltfSampler)) {
+    if (IsNull(loadParams.pDevice) || IsNull(loadParams.pResourceManager)) {
         return ppx::ERROR_UNEXPECTED_NULL_ARGUMENT;
+    }
+
+    if (pGltfSampler == nullptr) {
+        // TODO magic number
+        if (loadParams.pResourceManager->Find(0, outSampler)) {
+            PPX_LOG_INFO("Fetched cached default GLTF sampler");
+            return ppx::SUCCESS;
+        }
+
+        if (const ppx::Result ppxres = MakeDefaultSampler(*loadParams.pDevice, outSampler); Failed(ppxres)) {
+            return ppxres;
+        }
+
+        loadParams.pResourceManager->Cache(0, outSampler);
+        PPX_LOG_INFO("   ...cached default GLTF sampler");
+        return ppx::SUCCESS;
     }
 
     // Get GLTF object name
@@ -834,6 +895,9 @@ ppx::Result GltfLoader::LoadTextureInternal(
     // Required objects
     scene::SamplerRef targetSampler = nullptr;
     scene::ImageRef   targetImage   = nullptr;
+
+    // TODO: pGltfTexture->sampler can be nullptr. "When texture.source is undefined, the image SHOULD be provided by an extension or application-specific means, otherwise the texture object is undefined."
+    // This is only accounted for in the ResourceManager branch below!
 
     // Fetch if there's a resource manager...
     if (!IsNull(loadParams.pResourceManager)) {
