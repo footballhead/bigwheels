@@ -1,3 +1,5 @@
+"""Renders all glTF-Sample-Assets and produces a report."""
+
 from pathlib import Path
 import unittest
 import json
@@ -13,6 +15,7 @@ _PROJECT_ROOT = Path(__file__).parent.parent
 _BUILD_ROOT = _PROJECT_ROOT / 'build'
 """Place to put test results like logs and screenshots"""
 _RESULTS_PATH = _BUILD_ROOT / 'test_gltf_results'
+# TODO Make a path that works on both Linux and Windows
 """Program to run to load models"""
 _TEST_PROGRAM = _BUILD_ROOT / 'bin' / 'vk_31_gltf_basic_materials'
 """Where the glTF-Sample-Assets checkout is"""
@@ -29,25 +32,34 @@ def _load_json(path: Path):
 
 
 def _get_git_head_commit():
+    """Returns the HEAD SHA"""
     process = subprocess.run(['git', 'rev-parse', 'HEAD'], capture_output=True)
     return process.stdout.decode()
 
 
 def _make_report(path: Path, models_index):
-    """Generate an HTML summary of the test run with screenshot comparison"""
+    """Generate an HTML summary of the test run with screenshot comparison.
+    
+    Arguements:
+        path: Destination of the HTML report
+        models_index: Loaded dict of glTF-Sample-Assets/Models/model-index.json
+    """
 
     report = '<html><body>'
     report += f'<p>Time: {datetime.datetime.now()}</p>'
     report += f'<p>SHA: {_get_git_head_commit()}</p>'
     report += f'<p>Host: {socket.getfqdn()}</p>'
     report += '<table>'
-    report += '<thead><tr><th>Label</th><th>glTF-Sample-Assets Screenshot</th><th>BigWheels Screenshot</th><th>BigWheels Log</th></tr></thead>'
+    report += '<thead><tr>'
+    report += '<th>Label</th>'
+    report += '<th>glTF-Sample-Assets Screenshot</th>'
+    report += '<th>BigWheels Screenshot</th>'
+    report += '<th>BigWheels Log</th>'
+    report += '</tr></thead>'
     report += '<tbody>'
     for model_spec in models_index:
-        # human-readable
-        label = model_spec['label']
-        # path in repo
-        name = model_spec['name']
+        label = model_spec['label'] # human-readable
+        name = model_spec['name'] # path in repo
         screenshot = model_spec['screenshot']
         variants = model_spec['variants']
 
@@ -58,6 +70,7 @@ def _make_report(path: Path, models_index):
             if subtest_results_path.exists():
                 # Browsers don't have great PPM support so use PNG.
                 # Use unix command since Python doesn't have great image support.
+                # TODO Replace with a solution that works on Windows
                 subprocess.run(
                     ['convert', _OUTPUT_SCREENSHOT_NAME, 'actual.png'],
                     cwd=subtest_results_path)
@@ -83,54 +96,56 @@ def _make_report(path: Path, models_index):
 
 
 class GltfSampleAssetsTestCase(unittest.TestCase):
-    def _subtest_model(self, model_spec):
-        """Open all variants of a model
+    """Renders all glTF-Sample-Assets and produces a report"""
+
+    def _subtest_model(self, results_path: Path, asset_path: Path):
+        """Renders a specific model using BigWheels sample app.
         
         Arguments:
-            model_spec: Model object in model-index.json
+            results_path: Place to store logs and screenshots
+            asset_path: Path relative to //third_party/assets
         
         Raises:
-            Some exception on failure; none is success
+            Some exception on failure; no exception indicates success
         """
-        name = model_spec['name']
-        variants = model_spec['variants']
-        for variant_name in variants:
-            variant_file = variants[variant_name]
-
-            subtest_results_path = _RESULTS_PATH / f'{name}-{variant_name}'
-            os.mkdir(subtest_results_path)
-
-            bigwheels_asset_path = f'glTF-Sample-Assets/Models/{name}/{variant_name}/{variant_file}'
-            # TODO: run headless to avoid taking control of the host computer
-            command = [
-                str(_TEST_PROGRAM),
-                '--frame-count', str(_FRAME_COUNT),
-                '--screenshot-frame-number', str(_FRAME_COUNT-1),
-                '--gltf-scene-file', bigwheels_asset_path,
-                '--screenshot-path', _OUTPUT_SCREENSHOT_NAME]
-            process = subprocess.run(command, cwd=subtest_results_path)
-
-            self.assertEqual(process.returncode, 0)
+        # TODO: run headless to avoid taking control of the host computer
+        command = [
+            str(_TEST_PROGRAM),
+            '--frame-count', str(_FRAME_COUNT),
+            '--screenshot-frame-number', str(_FRAME_COUNT-1),
+            '--gltf-scene-file', asset_path,
+            '--screenshot-path', _OUTPUT_SCREENSHOT_NAME]
+        process = subprocess.run(command, cwd=results_path)
+        self.assertEqual(process.returncode, 0)
 
     def test_all(self):
-        """Opens all models in glTF-Sample-Assets.
+        """Opens all models in //third_party/assets/glTF-Sample-Assets.
         
         Raises:
-            Some exception on failure; none is success
+            Some exception on failure; no exception indicates success
         """
         os.mkdir(_RESULTS_PATH)
 
-        models_index = _load_json(
+        model_index = _load_json(
             _GLTF_SAMPLE_ASSETS / 'Models' / 'model-index.json')
-        for model_spec in models_index:
-            with self.subTest(model_spec):
-                self._subtest_model(model_spec)
-        
-        _make_report(_RESULTS_PATH / 'report.html', models_index)
+        for model in model_index:
+            name = model['name']
+            variants = model['variants']
+            for variant_name in variants:
+                variant_file = variants[variant_name]
+
+                name_of_test = f'{name}-{variant_name}'
+                subtest_results_path = _RESULTS_PATH / name_of_test
+                bigwheels_asset_path = f'glTF-Sample-Assets/Models/{name}/{variant_name}/{variant_file}'
+
+                os.mkdir(subtest_results_path)
+
+                with self.subTest(name_of_test):
+                    self._subtest_model(
+                        subtest_results_path, bigwheels_asset_path)
+
+        _make_report(_RESULTS_PATH / 'index.html', model_index)
 
 
 if __name__ == '__main__':
-    # models_index = _load_json(
-    #     _GLTF_SAMPLE_ASSETS / 'Models' / 'model-index.json')
-    # _make_report(_RESULTS_PATH / 'report.html', models_index)
     unittest.main()

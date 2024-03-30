@@ -30,6 +30,9 @@ namespace scene {
 
 namespace {
 
+// Sentinel resource manager object ID for the default sampler when one isn't provided for a texture
+constexpr uint64_t kDefaultSamplerObjectId = std::numeric_limits<uint64_t>::max();
+
 #define GLTF_LOD_CLAMP_NONE 1000.0f
 
 enum GltfTextureFilter
@@ -674,8 +677,10 @@ ppx::Result GltfLoader::FetchSamplerInternal(
     }
 
     if (pGltfSampler == nullptr) {
+        PPX_LOG_INFO("pGltfSampler == nullptr; using a the default sampler!");
+    
         // TODO magic number
-        if (loadParams.pResourceManager->Find(0, outSampler)) {
+        if (loadParams.pResourceManager->Find(kDefaultSamplerObjectId, outSampler)) {
             PPX_LOG_INFO("Fetched cached default GLTF sampler");
             return ppx::SUCCESS;
         }
@@ -684,7 +689,7 @@ ppx::Result GltfLoader::FetchSamplerInternal(
             return ppxres;
         }
 
-        loadParams.pResourceManager->Cache(0, outSampler);
+        loadParams.pResourceManager->Cache(kDefaultSamplerObjectId, outSampler);
         PPX_LOG_INFO("   ...cached default GLTF sampler");
         return ppx::SUCCESS;
     }
