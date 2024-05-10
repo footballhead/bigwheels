@@ -41,6 +41,12 @@ generate_rules_for_shader("shader_scene_renderer_vertex_material_vertex"
     INCLUDE_DIRS ${INCLUDE_DIRS}
     STAGES "vs")
 
+generate_rules_for_shader("shader_scene_renderer_vertex_error_vertex"
+    SOURCE "${SRC_DIR}/ErrorVertex.hlsl"
+    INCLUDES ${INCLUDE_FILES}
+    INCLUDE_DIRS ${INCLUDE_DIRS}
+    STAGES "vs")
+
 generate_rules_for_shader("shader_scene_renderer_material_error"
     SOURCE "${SRC_DIR}/ErrorMaterial.hlsl"
     INCLUDES ${INCLUDE_FILES}
