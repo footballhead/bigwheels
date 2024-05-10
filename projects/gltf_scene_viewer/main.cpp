@@ -20,6 +20,7 @@
 #include "ppx/graphics_util.h"
 
 #include <unordered_map>
+#include <memory>
 
 namespace {
 
@@ -32,7 +33,7 @@ const grfx::Api kApi = grfx::API_VK_1_1;
 #endif
 
 // Use an interactive camera instead of any in the scene
-constexpr bool kForceArcballCamera = true;
+constexpr bool kForceArcballCamera = false;
 
 ppx::AABB GetTransformedMeshNodeBoundingBox(const scene::MeshNode& meshNode)
 {
@@ -72,48 +73,47 @@ public:
     void Config(ppx::ApplicationSettings& settings) override
     {
         settings.appName                    = "gltf_scene_viewer";
-        settings.enableImGui                = true;
         settings.grfx.api                   = kApi;
         settings.grfx.swapchain.depthFormat = grfx::FORMAT_D32_FLOAT;
         settings.allowThirdPartyAssets      = true;
-    }
-
-    void Shutdown() override
-    {
-        delete mScene;
-        delete mPipelineArgs;
     }
 
     void MouseMove(int32_t x, int32_t y, int32_t dx, int32_t dy, uint32_t buttons) override
     {
         if (mArcballCamera.has_value()) {
             if (buttons & ppx::MOUSE_BUTTON_LEFT) {
-                int32_t prevX = x - dx;
-                int32_t prevY = y - dy;
+                const int32_t prevX = x - dx;
+                const int32_t prevY = y - dy;
 
-                float2 prevPos = GetNormalizedDeviceCoordinates(prevX, prevY);
-                float2 curPos  = GetNormalizedDeviceCoordinates(x, y);
+                const float2 prevPos = GetNormalizedDeviceCoordinates(prevX, prevY);
+                const float2 curPos  = GetNormalizedDeviceCoordinates(x, y);
 
                 mArcballCamera->Rotate(prevPos, curPos);
             }
             else if (buttons & ppx::MOUSE_BUTTON_RIGHT) {
-                int32_t prevX = x - dx;
-                int32_t prevY = y - dy;
+                const int32_t prevX = x - dx;
+                const int32_t prevY = y - dy;
 
-                float2 prevPos = GetNormalizedDeviceCoordinates(prevX, prevY);
-                float2 curPos  = GetNormalizedDeviceCoordinates(x, y);
-                float2 delta   = curPos - prevPos;
+                const float2 prevPos = GetNormalizedDeviceCoordinates(prevX, prevY);
+                const float2 curPos  = GetNormalizedDeviceCoordinates(x, y);
+                const float2 delta   = curPos - prevPos;
 
                 mArcballCamera->Pan(delta);
             }
         }
     }
 
-    void Scroll(float dx, float dy) override
+    void Scroll(float /*dx*/, float dy) override
     {
         if (mArcballCamera.has_value()) {
             mArcballCamera->Zoom(dy / 2.0f);
         }
+    }
+
+    void Shutdown() override
+    {
+        delete mScene;
+        delete mPipelineArgs;
     }
 
     void Setup() override;
@@ -137,6 +137,7 @@ private:
     ppx::grfx::GraphicsPipelinePtr  mUnlitMaterialPipeline    = nullptr;
     ppx::grfx::GraphicsPipelinePtr  mErrorMaterialPipeline    = nullptr;
 
+    // Can't use smart pointers because these need to be freed in Shutdown() before the destructor.
     ppx::scene::Scene*                mScene        = nullptr;
     ppx::scene::MaterialPipelineArgs* mPipelineArgs = nullptr;
 
@@ -175,12 +176,12 @@ void GltfSceneViewer::Setup()
     // Load GLTF scene
     {
         const std::string defaultScene = "scene_renderer/scenes/tests/gltf_test_basic_materials.glb";
-        // TODO: std::unique_ptr<scene::GltfLoader*>
-        scene::GltfLoader* pLoader = nullptr;
+        scene::GltfLoader* pLoaderRaw = nullptr;
         PPX_CHECKED_CALL(scene::GltfLoader::Create(
             GetAssetPath(GetExtraOptions().GetExtraOptionValueOrDefault("gltf-scene-file", defaultScene)),
-            nullptr,
-            &pLoader));
+            /*pMaterialSelector=*/nullptr,
+            &pLoaderRaw));
+        std::unique_ptr<scene::GltfLoader> pLoader(pLoaderRaw);
 
         PPX_CHECKED_CALL(pLoader->LoadScene(GetDevice(), 0, &mScene));
         if (mScene->GetCameraNodeCount() == 0 || kForceArcballCamera) {
@@ -196,8 +197,6 @@ void GltfSceneViewer::Setup()
             mArcballCamera->FitToBoundingBox(sceneBoundingBox.GetMin(), sceneBoundingBox.GetMax());
         }
         PPX_ASSERT_MSG((mScene->GetMeshNodeCount() > 0), "scene doesn't have mesh nodes");
-
-        delete pLoader;
     }
 
     // IBL Textures

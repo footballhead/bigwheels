@@ -12,7 +12,7 @@ import socket
 # Bigwheels checkout root
 _PROJECT_ROOT = Path(__file__).parent.parent
 # Build directory
-_BUILD_ROOT = _PROJECT_ROOT / 'build'
+_BUILD_ROOT = _PROJECT_ROOT / 'build-release'
 # Place to put test results like logs and screenshots
 _RESULTS_PATH = _BUILD_ROOT / 'test_gltf_results'
 # Program to run to load models
@@ -86,7 +86,7 @@ def _make_report(path: Path, models_index):
                 # Use relative paths so we can zip up the results folder and share
                 report += f'<td><img width="640px" src="{subtest_results_name}/expected{expected_screenshot_path.suffix}"></td>'
                 report += f'<td><img width="640px" src="{subtest_results_name}/actual.png"></td>'
-                report += f'<td><a href="{subtest_results_name}/ppx.log">ppx.log</a></td>'
+                report += f'<td><a href="{subtest_results_name}/ppx.log">ppx.log</a> - <a href="{subtest_results_name}/stdout.log">stdout.log</a> - <a href="{subtest_results_name}/stderr.log">stderr.log</a></td>'
                 report += '</tr>'
 
     report += '</tbody>'
@@ -108,14 +108,16 @@ class GltfSampleAssetsTestCase(unittest.TestCase):
         Raises:
             Some exception on failure; no exception indicates success
         """
-        # TODO: run headless to avoid taking control of the host computer
         command = [
             str(_TEST_PROGRAM),
             '--frame-count', str(_FRAME_COUNT),
             '--screenshot-frame-number', str(_FRAME_COUNT-1),
             '--gltf-scene-file', asset_path,
-            '--screenshot-path', _OUTPUT_SCREENSHOT_NAME]
-        process = subprocess.run(command, cwd=results_path)
+            '--screenshot-path', _OUTPUT_SCREENSHOT_NAME,
+            '--headless']
+        process = subprocess.run(command, cwd=results_path, capture_output=True)
+        (results_path / 'stdout.log').write_bytes(process.stdout)
+        (results_path / 'stderr.log').write_bytes(process.stderr)
         self.assertEqual(process.returncode, 0)
 
     def test_all(self):
