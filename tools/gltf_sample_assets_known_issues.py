@@ -42,9 +42,9 @@ KNOWN_ISSUES: dict[str, list[int]] = {
     "BoxAnimated-glTF-Embedded": [457],
     "BoxAnimated-glTF": [457],
     "BoxAnimated-glTF-Binary": [457],
-    # "BoxInterleaved-glTF-Embedded": [] # TODO: Triage
-    # "BoxInterleaved-glTF": [] # TODO: Triage
-    # "BoxInterleaved-glTF-Binary": [] # TODO: Triage
+    "BoxInterleaved-glTF-Embedded": [472],
+    "BoxInterleaved-glTF": [472],
+    "BoxInterleaved-glTF-Binary": [472],
     "BoxTextured-glTF-Embedded": [454],
     "BoxTextured-glTF": None,
     "BoxTextured-glTF-Binary": None,
@@ -88,4 +88,19 @@ KNOWN_ISSUES: dict[str, list[int]] = {
     # TODO: DiffuseTransmissionPlant-glTF
     "DiffuseTransmissionTeacup-glTF": [455, 460, 461],
     "DiffuseTransmissionTeacup-glTF-Binary": [455, 460, 461],
+    # TODO: DirectionalLight-glTF
+    "DispersionTest-glTF": [455],
+    "DispersionTest-glTF-Binary": [455],
+    "DragonAttenuation-glTF": [455],
+    "DragonAttenuation-glTF-Binary": [455],
+    "DragonDispersion-glTF": [455],
+    "DragonDispersion-glTF-Binary": [455],
+    "Duck-glTF-Embedded": [454], # TODO Camera
+    # TODO Duck-glTF Camera
+    # TODO Duck-glTF-Binary Camera
+    "Duck-glTF-Draco": [455],
+    "Duck-glTF-Quantized": [455],
+    "EmissiveStrengthTest-glTF": [455],
+    "EmissiveStrengthTest-glTF-Binary": [455],
+    # TODO "EnvironmentTest-glTF"
 }
