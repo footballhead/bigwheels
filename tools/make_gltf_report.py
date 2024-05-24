@@ -10,6 +10,7 @@ import datetime
 import socket
 
 from gltf_sample_assets_known_issues import KNOWN_ISSUES
+from test_gltf import OUTPUT_SCREENSHOT_NAME
 
 # Bigwheels checkout root
 _PROJECT_ROOT = Path(__file__).parent.parent
@@ -19,8 +20,6 @@ _BUILD_ROOT = _PROJECT_ROOT / 'build-release'
 _RESULTS_PATH = _BUILD_ROOT / 'test_gltf_results'
 # Where the glTF-Sample-Assets checkout is
 _GLTF_SAMPLE_ASSETS = _PROJECT_ROOT / 'third_party' / 'assets' / 'glTF-Sample-Assets'
-# Filename of the screenshot produced by the program under test
-_OUTPUT_SCREENSHOT_NAME = 'actual.ppm'
 _REPO_URL = 'https://github.com/google/bigwheels'
 
 def _load_json(path: Path):
@@ -53,9 +52,10 @@ def _make_report(path: Path, models_index):
     report += '<th>Known Issues</th>'
     report += '<th>glTF-Sample-Assets Screenshot</th>'
     report += '<th>BigWheels Screenshot</th>'
-    report += '<th>BigWheels Log</th>'
+    report += '<th>Exit Status</th>'
+    report += '<th>Logs</th>'
     report += '</tr></thead>'
-    report += '<tbody>'
+    report += '<tbody>\n'
     for model_spec in models_index:
         label = model_spec['label'] # human-readable
         name = model_spec['name'] # path in repo
@@ -64,15 +64,16 @@ def _make_report(path: Path, models_index):
 
         for variant_name in variants:
             subtest_results_name = f'{name}-{variant_name}'
+            report += f'<!--{subtest_results_name}-->\n'
             subtest_results_path = _RESULTS_PATH / subtest_results_name
 
             if subtest_results_path.exists():
                 # Browsers don't have great PPM support so use PNG.
                 # Use unix command since Python doesn't have great image support.
                 # TODO Replace with a solution that works on Windows
-                if (subtest_results_path / _OUTPUT_SCREENSHOT_NAME).exists():
+                if (subtest_results_path / OUTPUT_SCREENSHOT_NAME).exists():
                     subprocess.run(
-                        ['convert', _OUTPUT_SCREENSHOT_NAME, 'actual.png'],
+                        ['convert', OUTPUT_SCREENSHOT_NAME, 'actual.png'],
                         cwd=subtest_results_path)
 
                 # Include the glTF-Sample-Assets screenshot into the report so it is self-containted
@@ -89,10 +90,14 @@ def _make_report(path: Path, models_index):
                 # Known Issues
                 report += '<td>'
                 if subtest_results_name in KNOWN_ISSUES:
-                    for issue in KNOWN_ISSUES[subtest_results_name]:
-                        report += f'<a href="{_REPO_URL}/issues/{issue}">#{issue}</a><br>'
+                    github_issues = KNOWN_ISSUES[subtest_results_name]
+                    if github_issues:
+                        for issue in github_issues:
+                            report += f'<a href="{_REPO_URL}/issues/{issue}">#{issue}</a><br>'
+                    else:
+                        report += 'None'
                 else:
-                    report += 'N/A'
+                    report += 'Untriaged'
                 report += '</td>'
 
                 # Use relative paths so we can zip up the results folder and share
@@ -103,10 +108,14 @@ def _make_report(path: Path, models_index):
                 # BigWheels Screenshot
                 report += f'<td><img width="640px" src="{subtest_results_name}/actual.png"></td>'
 
-                # BigWheels Log
+                # Exit Status
+                exit_status = (subtest_results_path / 'exit_status.txt').read_text()
+                report += f'<td>{exit_status}</td>'
+
+                # Logs
                 report += f'<td><a href="{subtest_results_name}/ppx.log">ppx.log</a> - <a href="{subtest_results_name}/stdout.log">stdout.log</a> - <a href="{subtest_results_name}/stderr.log">stderr.log</a></td>'
 
-                report += '</tr>'
+                report += '</tr>\n'
 
     report += '</tbody>'
     report += '</table></body></html>'
