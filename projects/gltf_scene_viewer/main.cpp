@@ -175,8 +175,8 @@ void GltfSceneViewer::Setup()
 
     // Load GLTF scene
     {
-        const std::string defaultScene = "scene_renderer/scenes/tests/gltf_test_basic_materials.glb";
-        scene::GltfLoader* pLoaderRaw = nullptr;
+        const std::string  defaultScene = "scene_renderer/scenes/tests/gltf_test_basic_materials.glb";
+        scene::GltfLoader* pLoaderRaw   = nullptr;
         PPX_CHECKED_CALL(scene::GltfLoader::Create(
             GetAssetPath(GetExtraOptions().GetExtraOptionValueOrDefault("gltf-scene-file", defaultScene)),
             /*pMaterialSelector=*/nullptr,
@@ -406,12 +406,13 @@ void GltfSceneViewer::Render()
                 // Draw batches
                 auto& batches = pMesh->GetBatches();
                 for (auto& batch : batches) {
+                    const scene::Material* material = batch.GetMaterial();
                     // Set pipeline
-                    auto pipeline = mMaterialPipelineMap[batch.GetMaterial()];
+                    auto pipeline = mMaterialPipelineMap[material];
                     frame.cmd->BindGraphicsPipeline(pipeline);
 
                     // Set DrawParams::materialIndex
-                    uint32_t materialIndex = mMaterialIndexMap[batch.GetMaterial()];
+                    uint32_t materialIndex = mMaterialIndexMap[material];
                     frame.cmd->PushGraphicsConstants(
                         mPipelineInterface,
                         1,
@@ -422,10 +423,20 @@ void GltfSceneViewer::Render()
                     frame.cmd->BindIndexBuffer(&batch.GetIndexBufferView());
 
                     // Vertex buffers
-                    std::vector<grfx::VertexBufferView> vertexBufferViews = {
-                        batch.GetPositionBufferView(),
-                        batch.GetAttributeBufferView()};
-                    frame.cmd->BindVertexBuffers(CountU32(vertexBufferViews), DataPtr(vertexBufferViews));
+                    // TODO look at GetRequiredVertexAttributes instead of IdentString?
+                    const std::string& materialIdentifier = material->GetIdentString();
+                    if (materialIdentifier == PPX_MATERIAL_IDENT_STANDARD || materialIdentifier == PPX_MATERIAL_IDENT_UNLIT) {
+                        std::vector<grfx::VertexBufferView> vertexBufferViews = {
+                            batch.GetPositionBufferView(),
+                            batch.GetAttributeBufferView()};
+                        frame.cmd->BindVertexBuffers(CountU32(vertexBufferViews), DataPtr(vertexBufferViews));
+                    } else if (materialIdentifier == PPX_MATERIAL_IDENT_ERROR) {
+                        // ErrorMaterial.hlsl returns a solid color; it doesn't need attributes
+                        std::vector<grfx::VertexBufferView> vertexBufferViews = {batch.GetPositionBufferView()};
+                        frame.cmd->BindVertexBuffers(CountU32(vertexBufferViews), DataPtr(vertexBufferViews));
+                    } else {
+                        PPX_ASSERT_MSG(false, "Unknown material " << materialIdentifier);
+                    }
 
                     frame.cmd->DrawIndexed(batch.GetIndexCount(), 1, 0, 0, 0);
                 }
