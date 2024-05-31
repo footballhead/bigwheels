@@ -5,7 +5,7 @@ from typing import Optional
 # - `[]`, or `None`? No known issues
 # - Otherwise, a list of GitHub issue numbers (https://github.com/google/bigwheels/issues/)
 KNOWN_ISSUES: dict[str, Optional[list[int]]] = {
-    'ABeautifulGame-glTF': [460, 461, 462],
+    'ABeautifulGame-glTF': [455, 460, 461, 462],
     'AlphaBlendModeTest-glTF-Embedded': [454],
     'AlphaBlendModeTest-glTF': [453],
     'AlphaBlendModeTest-glTF-Binary': [453],
@@ -143,8 +143,8 @@ KNOWN_ISSUES: dict[str, Optional[list[int]]] = {
     'LightsPunctualLamp-glTF': [455],
     'LightsPunctualLamp-glTF-Binary': [455],
     'MandarinOrange-glTF': [473],
-    'MaterialsVariantsShoe-glTF': None,
-    'MaterialsVariantsShoe-glTF-Binary': None,
+    'MaterialsVariantsShoe-glTF': [455],
+    'MaterialsVariantsShoe-glTF-Binary': [455],
     'MeshPrimitiveModes-glTF-Embedded': [454, 475],
     'MeshPrimitiveModes-glTF': [475],
     'MetalRoughSpheres-glTF-Embedded': [454],
