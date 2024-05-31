@@ -42,7 +42,10 @@ def _make_report(path: Path, models_index):
         models_index: Loaded dict of glTF-Sample-Assets/Models/model-index.json
     """
 
-    report = '<html><body>'
+    report = '<html>'
+    # Alternate row color to make table easier to parse
+    report += '<head><style>tbody tr:nth-child(odd) { background-color: #eee; }</style></head>'
+    report += '<body>'
     report += f'<p>Time: {datetime.datetime.now()}</p>'
     report += f'<p>SHA: {_get_git_head_commit()}</p>'
     report += f'<p>Host: {socket.getfqdn()}</p>'
@@ -85,7 +88,7 @@ def _make_report(path: Path, models_index):
                 report += '<tr>'
 
                 # Label
-                report += f'<td>{label} ({variant_name})</td>'
+                report += f'<td><a href="https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/{name}/{variant_name}">{label} ({variant_name})</a></td>'
 
                 # Known Issues
                 report += '<td>'
@@ -95,7 +98,7 @@ def _make_report(path: Path, models_index):
                         for issue in github_issues:
                             report += f'<a href="{_REPO_URL}/issues/{issue}">#{issue}</a><br>'
                     else:
-                        report += 'None'
+                        report += 'None! 🎉'
                 else:
                     report += 'Untriaged'
                 report += '</td>'
