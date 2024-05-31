@@ -336,34 +336,6 @@ static const void* GetStartAddress(
     return static_cast<const void*>(pAccessorDataStart);
 }
 
-namespace {
-std::optional<int> GetComponentCount(cgltf_type accessorType) {
-    GetFormat()
-    if (accessorType == "VEC3") {
-        return 3;
-    }
-    if (accessorType == "SCALAR") {
-        return 1;
-    }
-    return std::nullopt;
-}
-
-std::optional<int> GetStride(cgltf_accessor* accessor) {
-    if (IsNull(accessor)) {
-        return std::nullopt;
-    }
-
-    if (accessor->buffer_view->stride == 0) {
-        grfx::Format format = GetFormat(accessor);
-
-        // Tightly packed
-        return GetComponentCount(accessor->) * GetComponentSize();
-    }
-
-    return accessor->buffer_view->stride;
-}
-}
-
 // -------------------------------------------------------------------------------------------------
 // GltfMaterialSelector
 // -------------------------------------------------------------------------------------------------
@@ -1548,53 +1520,39 @@ ppx::Result GltfLoader::LoadMeshData(
                     PPX_ASSERT_MSG((colorFormat == targetColorFormat), "GLTF: vertex colors format is not supported");
                 }
 
-                // TODO support interleaved 
                 // Data starts
-                // TODO: This assumes the accessor layout (VEC3, etc)
-                // float3
-                // TODO: does stride == 0 by mean tightly packed? what about sparse accessors?
-                const uint8_t* pGltflPositions = static_cast<const uint8_t*>(GetStartAddress(mGltfData, gltflAccessors.pPositions));
-                const int      positionsStride = gltflAccessors.pPositions->buffer_view->stride == 0 ? sizeof(float3) : gltflAccessors.pPositions->buffer_view->stride;
-                // float3
-                const uint8_t* pGltflNormals = static_cast<const uint8_t*>(GetStartAddress(mGltfData, gltflAccessors.pNormals));
-                const int      normalsStride = gltflAccessors.pNormals->buffer_view->stride == 0 ? sizeof(float3) : gltflAccessors.pNormals->buffer_view->stride;
-                // float4
-                const uint8_t* pGltflTangents = static_cast<const uint8_t*>(GetStartAddress(mGltfData, gltflAccessors.pTangents));
-                const int      tangentsStride = gltflAccessors.pTangents->buffer_view->stride == 0 ? sizeof(float4) : gltflAccessors.pTangents->buffer_view->stride;
-                // float3
-                const uint8_t* pGltflColors = static_cast<const uint8_t*>(GetStartAddress(mGltfData, gltflAccessors.pColors));
-                const int      colorsStride = gltflAccessors.pColors->buffer_view->stride == 0 ? sizeof(float3) : gltflAccessors.pColors->buffer_view->stride;
-                // float2
-                const uint8_t* pGltflTexCoords = static_cast<const uint8_t*>(GetStartAddress(mGltfData, gltflAccessors.pTexCoords));
-                const int      texCoordsStride = gltflAccessors.pTexCoords->buffer_view->stride == 0 ? sizeof(float2) : gltflAccessors.pTexCoords->buffer_view->stride;
+                const float3* pGltflPositions = static_cast<const float3*>(GetStartAddress(mGltfData, gltflAccessors.pPositions));
+                const float3* pGltflNormals   = static_cast<const float3*>(GetStartAddress(mGltfData, gltflAccessors.pNormals));
+                const float4* pGltflTangents  = static_cast<const float4*>(GetStartAddress(mGltfData, gltflAccessors.pTangents));
+                const float3* pGltflColors    = static_cast<const float3*>(GetStartAddress(mGltfData, gltflAccessors.pColors));
+                const float2* pGltflTexCoords = static_cast<const float2*>(GetStartAddress(mGltfData, gltflAccessors.pTexCoords));
 
                 // Process vertex data
                 for (cgltf_size i = 0; i < gltflAccessors.pPositions->count; ++i) {
                     TriMeshVertexData vertexData = {};
 
                     // Position
-                    vertexData.position = *reinterpret_cast<const float3*>(pGltflPositions);
-                    pGltflPositions += positionsStride;
-                    // TODO what is stride if not specified?
+                    vertexData.position = *pGltflPositions;
+                    ++pGltflPositions;
                     // Normals
                     if (loadParams.requiredVertexAttributes.bits.normals && !IsNull(pGltflNormals)) {
-                        vertexData.normal = *reinterpret_cast<const float3*>(pGltflNormals);
-                        pGltflNormals += normalsStride;
+                        vertexData.normal = *pGltflNormals;
+                        ++pGltflNormals;
                     }
                     // Tangents
                     if (loadParams.requiredVertexAttributes.bits.tangents && !IsNull(pGltflTangents)) {
-                        vertexData.tangent = *reinterpret_cast<const float4*>(pGltflTangents);
-                        pGltflTangents += tangentsStride;
+                        vertexData.tangent = *pGltflTangents;
+                        ++pGltflTangents;
                     }
                     // Colors
                     if (loadParams.requiredVertexAttributes.bits.colors && !IsNull(pGltflColors)) {
-                        vertexData.color = *reinterpret_cast<const float3*>(pGltflColors);
-                        pGltflColors += colorsStride;
+                        vertexData.color = *pGltflColors;
+                        ++pGltflColors;
                     }
                     // Tex cooord
                     if (loadParams.requiredVertexAttributes.bits.texCoords && !IsNull(pGltflTexCoords)) {
-                        vertexData.texCoord = *reinterpret_cast<const float2*>(pGltflTexCoords);
-                        pGltflTexCoords += texCoordsStride;
+                        vertexData.texCoord = *pGltflTexCoords;
+                        ++pGltflTexCoords;
                     }
 
                     // Append vertex data

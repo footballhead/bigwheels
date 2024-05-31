@@ -225,6 +225,7 @@ void GltfSceneViewer::Setup()
         }
 
         // Populate material params
+        // TODO missing METAL, etc labels
         mMaterialIndexMap = mScene->GetMaterialsArrayIndexMap();
         for (auto it : mMaterialIndexMap) {
             auto           pMaterial = it.first;
