@@ -657,6 +657,11 @@ bool Device::PartialDescriptorBindingsSupported() const
     return true;
 }
 
+bool Device::IndexTypeUint8Supported() const
+{
+    return true;
+}
+
 } // namespace dx12
 } // namespace grfx
 } // namespace ppx

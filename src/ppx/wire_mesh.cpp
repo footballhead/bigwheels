@@ -18,12 +18,23 @@
 
 namespace ppx {
 
+namespace {
+grfx::IndexType OverrideIndexType(grfx::IndexType indexType)
+{
+    if (indexType == grfx::INDEX_TYPE_UINT8) {
+        PPX_LOG_WARN("INDEX_TYPE_UINT8 unsupported, using INDEX_TYPE_UINT16 instead");
+        return grfx::INDEX_TYPE_UINT16;
+    }
+    return indexType;
+}
+} // namespace
+
 WireMesh::WireMesh()
 {
 }
 
 WireMesh::WireMesh(grfx::IndexType indexType)
-    : mIndexType(indexType)
+    : mIndexType(OverrideIndexType(indexType))
 {
 }
 

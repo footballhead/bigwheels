@@ -1279,11 +1279,16 @@ ppx::Result GltfLoader::LoadMeshData(
         // Get index format
         //
         // It's valid for this to be UNDEFINED, means the primitive doesn't have any index data.
-        // However, if it's not UNDEFINED, UINT16, or UINT32 then it's a format we can't handle.
+        // However, if it's not UNDEFINED or unsigned integer type then it's a format we can't handle.
         //
         auto indexFormat = GetFormat(pGltfPrimitive->indices);
-        if ((indexFormat != grfx::FORMAT_UNDEFINED) && (indexFormat != grfx::FORMAT_R16_UINT) && (indexFormat != grfx::FORMAT_R32_UINT)) {
+        if ((indexFormat != grfx::FORMAT_UNDEFINED) && (indexFormat != grfx::FORMAT_R8_UINT) && (indexFormat != grfx::FORMAT_R16_UINT) && (indexFormat != grfx::FORMAT_R32_UINT)) {
             PPX_ASSERT_MSG(false, "GLTF mesh primitive has unrecognized index format");
+            return ppx::ERROR_SCENE_INVALID_SOURCE_GEOMETRY_INDEX_TYPE;
+        }
+
+        if (indexFormat == grfx::FORMAT_R8_UINT && !loadParams.pDevice->IndexTypeUint8Supported()) {
+            PPX_ASSERT_MSG(false, "UINT8 index buffer is not supported");
             return ppx::ERROR_SCENE_INVALID_SOURCE_GEOMETRY_INDEX_TYPE;
         }
 
@@ -1426,6 +1431,9 @@ ppx::Result GltfLoader::LoadMeshData(
                 if (batch.indexFormat == grfx::FORMAT_R32_UINT) {
                     createInfo = hasAttributes ? GeometryCreateInfo::PositionPlanarU32() : GeometryCreateInfo::PlanarU32();
                 }
+                else if (batch.indexFormat == grfx::FORMAT_R8_UINT) {
+                    createInfo = hasAttributes ? GeometryCreateInfo::PositionPlanarU8() : GeometryCreateInfo::PlanarU8();
+                }
                 // clang-format off
                 if (loadParams.requiredVertexAttributes.bits.texCoords) createInfo.AddTexCoord(targetTexCoordFormat);
                 if (loadParams.requiredVertexAttributes.bits.normals) createInfo.AddNormal(targetNormalFormat);
@@ -1461,6 +1469,13 @@ ppx::Result GltfLoader::LoadMeshData(
                     // UINT16
                     else if (batch.indexFormat == grfx::FORMAT_R16_UINT) {
                         const uint16_t* pGltfIndex = static_cast<const uint16_t*>(pGltfIndices);
+                        for (cgltf_size i = 0; i < pGltfAccessor->count; ++i, ++pGltfIndex) {
+                            targetGeometry.AppendIndex(*pGltfIndex);
+                        }
+                    }
+                    // UINT8
+                    else if (batch.indexFormat == grfx::FORMAT_R8_UINT) {
+                        const uint8_t* pGltfIndex = static_cast<const uint8_t*>(pGltfIndices);
                         for (cgltf_size i = 0; i < pGltfAccessor->count; ++i, ++pGltfIndex) {
                             targetGeometry.AppendIndex(*pGltfIndex);
                         }
@@ -1580,7 +1595,7 @@ ppx::Result GltfLoader::LoadMeshData(
             const uint32_t repackedPositionBufferSize  = targetGeometry.GetVertexBuffer(0)->GetSize();
             const uint32_t repackedAttributeBufferSize = hasAttributes ? targetGeometry.GetVertexBuffer(1)->GetSize() : 0;
             if (repackedIndexBufferSize != batch.indexDataSize) {
-                PPX_ASSERT_MSG(false, "repacked index buffer size does not match batch's index data size");
+                PPX_ASSERT_MSG(false, "repacked index buffer size does not match batch's index data size; expected=" << batch.indexDataSize << " actual=" << repackedIndexBufferSize);
                 return ppx::ERROR_SCENE_INVALID_SOURCE_GEOMETRY_INDEX_DATA;
             }
             if (repackedPositionBufferSize != batch.positionDataSize) {
@@ -1644,7 +1659,8 @@ ppx::Result GltfLoader::LoadMeshData(
     for (uint32_t batchIdx = 0; batchIdx < CountU32(batchInfos); ++batchIdx) {
         const auto& batch = batchInfos[batchIdx];
 
-        const grfx::IndexType indexType       = (batch.indexFormat == grfx::FORMAT_R32_UINT) ? grfx::INDEX_TYPE_UINT32 : grfx::INDEX_TYPE_UINT16;
+        const grfx::IndexType indexType       = (batch.indexFormat == grfx::FORMAT_R32_UINT) ? grfx::INDEX_TYPE_UINT32 : batch.indexFormat == grfx::FORMAT_R16_UINT ? grfx::INDEX_TYPE_UINT16
+                                                                                                                                                                    : grfx::INDEX_TYPE_UINT8;
         grfx::IndexBufferView indexBufferView = grfx::IndexBufferView(targetGpuBuffer, indexType, batch.indexDataOffset, batch.indexDataSize);
 
         grfx::VertexBufferView positionBufferView  = grfx::VertexBufferView(targetGpuBuffer, targetPositionElementSize, batch.positionDataOffset, batch.positionDataSize);

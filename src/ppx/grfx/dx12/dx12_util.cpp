@@ -165,6 +165,7 @@ DXGI_FORMAT ToD3D12IndexFormat(grfx::IndexType value)
         default: break;
         case grfx::INDEX_TYPE_UINT16 : return DXGI_FORMAT_R16_UINT; break;
         case grfx::INDEX_TYPE_UINT32 : return DXGI_FORMAT_R32_UINT; break;
+        case grfx::INDEX_TYPE_UINT8  : return DXGI_FORMAT_R8_UINT; break;
     }
     // clang-format on
     return DXGI_FORMAT_UNKNOWN;
