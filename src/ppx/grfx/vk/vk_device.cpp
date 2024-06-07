@@ -235,6 +235,14 @@ Result Device::ConfigureExtensions(const grfx::DeviceCreateInfo* pCreateInfo)
     }
 #endif
 
+    // TODO: Delcare support VK_KHR_INDEX_TYPE_UINT8_EXTENSION_NAME
+    if (ElementExists(std::string(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME), mFoundExtensions)) {
+        mExtensions.push_back(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
+    }
+    else {
+        PPX_ASSERT_MSG(false, "VK_KHR_index_type_uint8 device extension is required");
+    }
+
     // Add additional extensions and uniquify
     AppendElements(pCreateInfo->vulkanExtensions, mExtensions);
     Unique(mExtensions);
@@ -319,7 +327,9 @@ Result Device::ConfigureDescriptorIndexingFeatures(
 {
     vk::Gpu* pGpu = ToApi(pCreateInfo->pGpu);
 
-    VkPhysicalDeviceDescriptorIndexingFeatures foundDiFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES};
+    // TODO put this in its own function?
+    VkPhysicalDeviceIndexTypeUint8FeaturesEXT  foundIndexTypeUint8Features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT};
+    VkPhysicalDeviceDescriptorIndexingFeatures foundDiFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES, &foundIndexTypeUint8Features};
     VkPhysicalDeviceFeatures2                  foundFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &foundDiFeatures};
     vkGetPhysicalDeviceFeatures2(pGpu->GetVkGpu(), &foundFeatures);
 
@@ -350,6 +360,11 @@ Result Device::ConfigureDescriptorIndexingFeatures(
     diFeatures.descriptorBindingPartiallyBound                    = foundDiFeatures.descriptorBindingPartiallyBound;
     diFeatures.descriptorBindingVariableDescriptorCount           = foundDiFeatures.descriptorBindingVariableDescriptorCount;
     diFeatures.runtimeDescriptorArray                             = VK_TRUE;
+
+    // TODO: I don't think this is right
+    if (foundIndexTypeUint8Features.indexTypeUint8) {
+        mIndexTypeUint8Supported = true;
+    }
 
     // Verify that any asserted features were actually found to be
     // supported.
@@ -627,6 +642,11 @@ Result Device::CreateApiObjects(const grfx::DeviceCreateInfo* pCreateInfo)
         fragmentShadingRateFeature.attachmentFragmentShadingRate = VK_TRUE;
         extensionStructs.push_back(reinterpret_cast<VkBaseOutStructure*>(&fragmentShadingRateFeature));
     }
+
+    // TODO only ask if extension is found
+    VkPhysicalDeviceIndexTypeUint8FeaturesEXT indexTypeUint8Feature = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT};
+    indexTypeUint8Feature.indexTypeUint8 = VK_TRUE;
+    extensionStructs.push_back(reinterpret_cast<VkBaseOutStructure*>(&indexTypeUint8Feature));
 
     // Chain pNexts
     for (size_t i = 1; i < extensionStructs.size(); ++i) {
@@ -1082,6 +1102,11 @@ bool Device::FragmentStoresAndAtomicsSupported() const
 bool Device::PartialDescriptorBindingsSupported() const
 {
     return mDescriptorIndexingFeatures.descriptorBindingPartiallyBound;
+}
+
+bool Device::IndexTypeUint8Supported() const
+{
+    return mIndexTypeUint8Supported;
 }
 
 void Device::ResetQueryPoolEXT(

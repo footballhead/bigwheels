@@ -51,6 +51,7 @@ list(
     APPEND TEST_SOURCES
     command_line_parser_test.cpp
     format_test.cpp
+    geometry_test.cpp
     knob_test.cpp
     log_console_test.cpp
     metrics_test.cpp

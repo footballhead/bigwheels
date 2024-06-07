@@ -433,6 +433,16 @@ GeometryCreateInfo GeometryCreateInfo::InterleavedU32(grfx::Format format)
     return ci;
 }
 
+GeometryCreateInfo GeometryCreateInfo::InterleavedU8(grfx::Format format)
+{
+    GeometryCreateInfo ci    = {};
+    ci.vertexAttributeLayout = GEOMETRY_VERTEX_ATTRIBUTE_LAYOUT_INTERLEAVED;
+    ci.indexType             = grfx::INDEX_TYPE_UINT8;
+    ci.vertexBindingCount    = 1; // Interleave attribute layout always has 1 vertex binding
+    ci.AddPosition(format);
+    return ci;
+}
+
 GeometryCreateInfo GeometryCreateInfo::PlanarU16(grfx::Format format)
 {
     GeometryCreateInfo ci    = {};
@@ -451,6 +461,15 @@ GeometryCreateInfo GeometryCreateInfo::PlanarU32(grfx::Format format)
     return ci;
 }
 
+GeometryCreateInfo GeometryCreateInfo::PlanarU8(grfx::Format format)
+{
+    GeometryCreateInfo ci    = {};
+    ci.vertexAttributeLayout = GEOMETRY_VERTEX_ATTRIBUTE_LAYOUT_PLANAR;
+    ci.indexType             = grfx::INDEX_TYPE_UINT8;
+    ci.AddPosition(format);
+    return ci;
+}
+
 GeometryCreateInfo GeometryCreateInfo::PositionPlanarU16(grfx::Format format)
 {
     GeometryCreateInfo ci    = {};
@@ -465,6 +484,15 @@ GeometryCreateInfo GeometryCreateInfo::PositionPlanarU32(grfx::Format format)
     GeometryCreateInfo ci    = {};
     ci.vertexAttributeLayout = GEOMETRY_VERTEX_ATTRIBUTE_LAYOUT_POSITION_PLANAR;
     ci.indexType             = grfx::INDEX_TYPE_UINT32;
+    ci.AddPosition(format);
+    return ci;
+}
+
+GeometryCreateInfo GeometryCreateInfo::PositionPlanarU8(grfx::Format format)
+{
+    GeometryCreateInfo ci    = {};
+    ci.vertexAttributeLayout = GEOMETRY_VERTEX_ATTRIBUTE_LAYOUT_POSITION_PLANAR;
+    ci.indexType             = grfx::INDEX_TYPE_UINT8;
     ci.AddPosition(format);
     return ci;
 }
@@ -511,6 +539,11 @@ GeometryCreateInfo& GeometryCreateInfo::IndexTypeU16()
 GeometryCreateInfo& GeometryCreateInfo::IndexTypeU32()
 {
     return IndexType(grfx::INDEX_TYPE_UINT32);
+}
+
+GeometryCreateInfo& GeometryCreateInfo::IndexTypeU8()
+{
+    return IndexType(grfx::INDEX_TYPE_UINT8);
 }
 
 GeometryCreateInfo& GeometryCreateInfo::AddAttribute(grfx::VertexSemantic semantic, grfx::Format format)
@@ -678,18 +711,10 @@ Result Geometry::Create(const GeometryCreateInfo& createInfo, Geometry* pGeometr
         return ppx::ERROR_INVALID_CREATE_ARGUMENT;
     }
 
-    if (createInfo.indexType != grfx::INDEX_TYPE_UNDEFINED) {
-        uint32_t elementSize = 0;
-        if (createInfo.indexType == grfx::INDEX_TYPE_UINT16) {
-            elementSize = sizeof(uint16_t);
-        }
-        else if (createInfo.indexType == grfx::INDEX_TYPE_UINT32) {
-            elementSize = sizeof(uint32_t);
-        }
-        else {
-            PPX_ASSERT_MSG(false, "invalid index type");
-            return ppx::ERROR_INVALID_CREATE_ARGUMENT;
-        }
+    bool isValidIndexType = createInfo.indexType == grfx::INDEX_TYPE_UNDEFINED || createInfo.indexType == grfx::INDEX_TYPE_UINT8 || createInfo.indexType == grfx::INDEX_TYPE_UINT16 || createInfo.indexType == grfx::INDEX_TYPE_UINT32;
+    if (!isValidIndexType) {
+        PPX_ASSERT_MSG(false, "invalid index type: " << createInfo.indexType);
+        return ppx::ERROR_INVALID_CREATE_ARGUMENT;
     }
 
     if (createInfo.vertexBindingCount == 0) {
@@ -1091,10 +1116,14 @@ void Geometry::AppendIndex(uint32_t idx)
     else if (mCreateInfo.indexType == grfx::INDEX_TYPE_UINT32) {
         mIndexBuffer.Append(idx);
     }
+    else if (mCreateInfo.indexType == grfx::INDEX_TYPE_UINT8) {
+        mIndexBuffer.Append(static_cast<uint8_t>(idx));
+    }
 }
 
 void Geometry::AppendIndicesTriangle(uint32_t idx0, uint32_t idx1, uint32_t idx2)
 {
+    // TODO: INDEX_TYPE_UINT8
     if (mCreateInfo.indexType == grfx::INDEX_TYPE_UINT16) {
         mIndexBuffer.Append(static_cast<uint16_t>(idx0));
         mIndexBuffer.Append(static_cast<uint16_t>(idx1));
@@ -1109,6 +1138,7 @@ void Geometry::AppendIndicesTriangle(uint32_t idx0, uint32_t idx1, uint32_t idx2
 
 void Geometry::AppendIndicesEdge(uint32_t idx0, uint32_t idx1)
 {
+    // TODO: INDEX_TYPE_UINT8
     if (mCreateInfo.indexType == grfx::INDEX_TYPE_UINT16) {
         mIndexBuffer.Append(static_cast<uint16_t>(idx0));
         mIndexBuffer.Append(static_cast<uint16_t>(idx1));
@@ -1121,6 +1151,7 @@ void Geometry::AppendIndicesEdge(uint32_t idx0, uint32_t idx1)
 
 void Geometry::AppendIndicesU32(uint32_t count, const uint32_t* pIndices)
 {
+    // TODO INDEX_TYPE_UINT8
     if (mCreateInfo.indexType == grfx::INDEX_TYPE_UINT16) {
         PPX_ASSERT_MSG(false, "Invalid geometry index type, trying to append UINT32 data to UINT16 indices");
         return;
