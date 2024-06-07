@@ -64,7 +64,8 @@ void GltfBasicMaterialsApp::Setup()
         scene::GltfLoader* pLoader = nullptr;
         //
         PPX_CHECKED_CALL(scene::GltfLoader::Create(
-            GetAssetPath("glTF-Sample-Assets/Models/AlphaBlendModeTest/glTF/AlphaBlendModeTest.gltf"),
+            GetAssetPath("scene_renderer/scenes/tests/gltf_test_basic_materials.glb"),
+            // GetAssetPath("scene_renderer/scenes/tests/gltf_test_materials.gltf"),
             nullptr,
             &pLoader));
 
@@ -219,14 +220,14 @@ void GltfBasicMaterialsApp::Render()
 
     grfx::SwapchainPtr swapchain = GetSwapchain();
 
-    // Wait for and reset render complete fence
-    PPX_CHECKED_CALL(frame.renderCompleteFence->WaitAndReset());
-
     uint32_t imageIndex = UINT32_MAX;
     PPX_CHECKED_CALL(swapchain->AcquireNextImage(UINT64_MAX, frame.imageAcquiredSemaphore, frame.imageAcquiredFence, &imageIndex));
 
     // Wait for and reset image acquired fence
     PPX_CHECKED_CALL(frame.imageAcquiredFence->WaitAndReset());
+
+    // Wait for and reset render complete fence
+    PPX_CHECKED_CALL(frame.renderCompleteFence->WaitAndReset());
 
     // Update camera params
     mPipelineArgs->SetCameraParams(mScene->GetCameraNode(0)->GetCamera());

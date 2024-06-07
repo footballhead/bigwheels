@@ -711,13 +711,10 @@ Result Geometry::Create(const GeometryCreateInfo& createInfo, Geometry* pGeometr
         return ppx::ERROR_INVALID_CREATE_ARGUMENT;
     }
 
-    if (createInfo.indexType != grfx::INDEX_TYPE_UNDEFINED) {
-        // TODO: This looks redundant given InternalCtor checks
-        bool isValidIndexType = createInfo.indexType == grfx::INDEX_TYPE_UINT8 || createInfo.indexType == grfx::INDEX_TYPE_UINT16 || createInfo.indexType == grfx::INDEX_TYPE_UINT32;
-        if (!isValidIndexType) {
-            PPX_ASSERT_MSG(false, "invalid index type");
-            return ppx::ERROR_INVALID_CREATE_ARGUMENT;
-        }
+    bool isValidIndexType = createInfo.indexType == grfx::INDEX_TYPE_UNDEFINED || createInfo.indexType == grfx::INDEX_TYPE_UINT8 || createInfo.indexType == grfx::INDEX_TYPE_UINT16 || createInfo.indexType == grfx::INDEX_TYPE_UINT32;
+    if (!isValidIndexType) {
+        PPX_ASSERT_MSG(false, "invalid index type: " << createInfo.indexType);
+        return ppx::ERROR_INVALID_CREATE_ARGUMENT;
     }
 
     if (createInfo.vertexBindingCount == 0) {

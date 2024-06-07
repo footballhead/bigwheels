@@ -112,8 +112,6 @@ private:
 
 //! @class Geometry
 //!
-//! A multi-planar description of mesh data.
-//!
 //! Implementation Notes:
 //!   - Recommended to avoid modifying the index/vertex buffers directly and to use
 //!     the Append* functions instead (for smaller geometries especially)
@@ -248,6 +246,7 @@ public:
     // Appends single index, triangle, or edge vertex indices to index buffer
     //
     // Will cast to uint16_t if geometry index type is UINT16.
+    // Will cast to uint8_t if geometry index type is UINT8.
     // NOOP if index type is UNDEFINED (geometry does not have index data).
     //
     void AppendIndex(uint32_t idx);

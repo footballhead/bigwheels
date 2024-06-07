@@ -28,6 +28,13 @@
 namespace ppx {
 namespace scene {
 
+namespace {
+
+// If true, try to use UINT8 index buffer in Geometry
+constexpr bool kUint8BufferFeatureFlag = true;
+
+} // namespace
+
 #define GLTF_LOD_CLAMP_NONE 1000.0f
 
 enum GltfTextureFilter
@@ -1190,10 +1197,6 @@ ppx::Result GltfLoader::FetchMaterialInternal(
     return ppx::SUCCESS;
 }
 
-// TODO: this is a big function, consider refactoring
-// Each mesh gets one buffer for index/verts/other attributes
-// Typically packing has 3 planes: indices, positions, all toher attributes (normals, tangets, uvs)
-// Data is loaded and massaged but ultimately repacked in the same floorplan
 ppx::Result GltfLoader::LoadMeshData(
     const GltfLoader::InternalLoadParams& loadParams,
     const cgltf_mesh*                     pGltfMesh,
@@ -1277,23 +1280,32 @@ ppx::Result GltfLoader::LoadMeshData(
         // TODO: #474 - Accept nullptr indices; treat as non-indexed geometry.
         if (IsNull(pGltfPrimitive->indices)) {
             PPX_ASSERT_MSG(false, "GLTF mesh primitive without index data is unimplemented, see #474");
-            return ppx::ERROR_SCENE_UNSUPPORTED_SOURCE_GEOMETRY_INDEX_DATA;
+            return ppx::ERROR_SCENE_INVALID_SOURCE_GEOMETRY_INDEX_DATA;
         }
 
-        // Get index format. Must be an unsigned integer type.
-        auto indexFormat = GetFormat(pGltfPrimitive->indices);
-        // TODO: Restore check for UNDEFINED (the rest of the code seems to work?)
-        bool isValidIndexFormat = indexFormat == grfx::FORMAT_R8_UINT || indexFormat == grfx::FORMAT_R16_UINT || indexFormat == grfx::FORMAT_R32_UINT;
+        // Get index format
+        //
+        // It's valid for this to be UNDEFINED, means the primitive doesn't have any index data.
+        // However, if it's not UNDEFINED, UINT8. UINT16, or UINT32 then it's a format we can't handle.
+        //
+        auto indexFormat        = GetFormat(pGltfPrimitive->indices);
+        bool isValidIndexFormat = indexFormat == grfx::FORMAT_UNDEFINED || indexFormat == grfx::FORMAT_R8_UINT || indexFormat == grfx::FORMAT_R16_UINT || indexFormat == grfx::FORMAT_R32_UINT;
         if (!isValidIndexFormat) {
             PPX_ASSERT_MSG(false, "GLTF mesh primitive has unrecognized index format: " << ToString(indexFormat));
             return ppx::ERROR_SCENE_INVALID_SOURCE_GEOMETRY_INDEX_TYPE;
         }
 
         // Index data size
-        // TODO: Input vs output format. UINT8 could be repacked as UINT16 due to lack of support in Goemetry
         const uint32_t indexCount       = !IsNull(pGltfPrimitive->indices) ? static_cast<uint32_t>(pGltfPrimitive->indices->count) : 0;
         const uint32_t indexElementSize = grfx::GetFormatDescription(indexFormat)->bytesPerTexel;
-        const uint32_t indexDataSize    = indexCount * (indexElementSize == 1 ? 2 : indexElementSize); // hack! treat UINt8 as UNIT16 for now
+        uint32_t       indexDataSize    = indexCount * indexElementSize;
+
+        if (!kUint8BufferFeatureFlag) {
+            // HACK: Treat UINT8 buffer as UINT16 (until UINT8 buffer is working)
+            if (indexElementSize == 1) {
+                indexDataSize *= 2;
+            }
+        }
 
         // Get position accessor
         const VertexAccessors gltflAccessors = GetVertexAccessors(pGltfPrimitive);
@@ -1419,9 +1431,13 @@ ppx::Result GltfLoader::LoadMeshData(
             bool genTopologyIndices = false;
             if (batch.indexFormat == grfx::FORMAT_UNDEFINED) {
                 genTopologyIndices = true;
-                // TODO: Magic number - replace with std::numeric_limits
-                batch.indexFormat = (batch.vertexCount < 256) ? grfx::FORMAT_R8_UINT : (batch.vertexCount < 65536) ? grfx::FORMAT_R16_UINT
-                                                                                                                   : grfx::FORMAT_R32_UINT;
+                // TODO: test this
+                if (kUint8BufferFeatureFlag) {
+                    PPX_ASSERT_MSG(false, "untested");
+                    return Result::ERROR_FAILED;
+                }
+                batch.indexFormat = (batch.vertexCount <= std::numeric_limits<uint8_t>::max()) ? grfx::FORMAT_R8_UINT : (batch.vertexCount <= std::numeric_limits<uint16_t>::max()) ? grfx::FORMAT_R16_UINT
+                                                                                                                                                                                    : grfx::FORMAT_R32_UINT;
             }
 
             // Create genTopologyIndices so we can repack gemetry data into position planar + packed vertex attributes.
@@ -1429,10 +1445,12 @@ ppx::Result GltfLoader::LoadMeshData(
             const bool hasAttributes  = (loadParams.requiredVertexAttributes.mask != 0);
             //
             {
-                // TODO: Add support for U8 index buffer in geometry for maximum packing
                 auto createInfo = hasAttributes ? GeometryCreateInfo::PositionPlanarU16() : GeometryCreateInfo::PlanarU16();
                 if (batch.indexFormat == grfx::FORMAT_R32_UINT) {
                     createInfo = hasAttributes ? GeometryCreateInfo::PositionPlanarU32() : GeometryCreateInfo::PlanarU32();
+                }
+                else if (batch.indexFormat == grfx::FORMAT_R8_UINT && kUint8BufferFeatureFlag) {
+                    createInfo = hasAttributes ? GeometryCreateInfo::PositionPlanarU8() : GeometryCreateInfo::PlanarU8();
                 }
                 // clang-format off
                 if (loadParams.requiredVertexAttributes.bits.texCoords) createInfo.AddTexCoord(targetTexCoordFormat);
@@ -1475,7 +1493,6 @@ ppx::Result GltfLoader::LoadMeshData(
                     }
                     // UINT8
                     else if (batch.indexFormat == grfx::FORMAT_R8_UINT) {
-                        // There's no support for UINT8 in geometry so this will use more memory than necessary
                         const uint8_t* pGltfIndex = static_cast<const uint8_t*>(pGltfIndices);
                         for (cgltf_size i = 0; i < pGltfAccessor->count; ++i, ++pGltfIndex) {
                             targetGeometry.AppendIndex(*pGltfIndex);
@@ -1596,7 +1613,6 @@ ppx::Result GltfLoader::LoadMeshData(
             const uint32_t repackedPositionBufferSize  = targetGeometry.GetVertexBuffer(0)->GetSize();
             const uint32_t repackedAttributeBufferSize = hasAttributes ? targetGeometry.GetVertexBuffer(1)->GetSize() : 0;
             if (repackedIndexBufferSize != batch.indexDataSize) {
-                // TODO: We might hit this since we turn UINT8 -> UINT16
                 PPX_ASSERT_MSG(false, "repacked index buffer size does not match batch's index data size. expected=" << batch.indexDataSize << " actual=" << repackedIndexBufferSize);
                 return ppx::ERROR_SCENE_INVALID_SOURCE_GEOMETRY_INDEX_DATA;
             }
@@ -1610,7 +1626,6 @@ ppx::Result GltfLoader::LoadMeshData(
             }
 
             // We're good - copy data to the staging buffer
-            // TODO: wtf is this doing? Are we just loading the data, shuffling around, and send it? Why not just send the original buffer?
             {
                 // Indices
                 const void* pSrcData = targetGeometry.GetIndexBuffer()->GetData();
@@ -1661,8 +1676,17 @@ ppx::Result GltfLoader::LoadMeshData(
     // Build batches
     for (uint32_t batchIdx = 0; batchIdx < CountU32(batchInfos); ++batchIdx) {
         const auto& batch = batchInfos[batchIdx];
-
-        const grfx::IndexType indexType       = (batch.indexFormat == grfx::FORMAT_R32_UINT) ? grfx::INDEX_TYPE_UINT32 : grfx::INDEX_TYPE_UINT16;
+        grfx::IndexType indexType = (batch.indexFormat == grfx::FORMAT_R32_UINT) ? grfx::INDEX_TYPE_UINT32 : grfx::INDEX_TYPE_UINT16;
+        // TODO: These checks happen in several places, can we centralize and disseminate instead?
+        // TODO: can batch.indexFormat be UNDEFINED here? Or does the topology gen fix this for us?
+        // TODO: test this
+        if (kUint8BufferFeatureFlag) {
+            if (batch.indexFormat == grfx::FORMAT_R8_UINT) {
+                indexType = grfx::INDEX_TYPE_UINT8;
+            }
+            // PPX_ASSERT_MSG(false, "unfinished");
+            // return Result::ERROR_FAILED;
+        }
         grfx::IndexBufferView indexBufferView = grfx::IndexBufferView(targetGpuBuffer, indexType, batch.indexDataOffset, batch.indexDataSize);
 
         grfx::VertexBufferView positionBufferView  = grfx::VertexBufferView(targetGpuBuffer, targetPositionElementSize, batch.positionDataOffset, batch.positionDataSize);
