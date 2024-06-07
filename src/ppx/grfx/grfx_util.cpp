@@ -95,6 +95,7 @@ uint32_t IndexTypeSize(grfx::IndexType value)
     // clang-format off
     switch (value) {
         default: break;
+        case grfx::INDEX_TYPE_UINT8:  return sizeof(uint8_t);  break;
         case grfx::INDEX_TYPE_UINT16: return sizeof(uint16_t); break;
         case grfx::INDEX_TYPE_UINT32: return sizeof(uint32_t); break;
     }
