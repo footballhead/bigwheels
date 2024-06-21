@@ -86,6 +86,20 @@ uint64_t WireMesh::GetDataSizeColors() const
     return size;
 }
 
+const uint8_t* WireMesh::GetDataIndicesU8(uint32_t index) const
+{
+    if (mIndexType != grfx::INDEX_TYPE_UINT8) {
+        return nullptr;
+    }
+    uint32_t count = GetCountIndices();
+    if (index >= count) {
+        return nullptr;
+    }
+    size_t      offset = IndexTypeSize(mIndexType) * index;
+    const char* ptr    = reinterpret_cast<const char*>(mIndices.data()) + offset;
+    return reinterpret_cast<const uint8_t*>(ptr);
+}
+
 const uint16_t* WireMesh::GetDataIndicesU16(uint32_t index) const
 {
     if (mIndexType != grfx::INDEX_TYPE_UINT16) {
@@ -95,7 +109,7 @@ const uint16_t* WireMesh::GetDataIndicesU16(uint32_t index) const
     if (index >= count) {
         return nullptr;
     }
-    size_t      offset = sizeof(uint16_t) * index;
+    size_t      offset = IndexTypeSize(mIndexType) * index;
     const char* ptr    = reinterpret_cast<const char*>(mIndices.data()) + offset;
     return reinterpret_cast<const uint16_t*>(ptr);
 }
@@ -109,7 +123,7 @@ const uint32_t* WireMesh::GetDataIndicesU32(uint32_t index) const
     if (index >= count) {
         return nullptr;
     }
-    size_t      offset = sizeof(uint32_t) * index;
+    size_t      offset = IndexTypeSize(mIndexType) * index;
     const char* ptr    = reinterpret_cast<const char*>(mIndices.data()) + offset;
     return reinterpret_cast<const uint32_t*>(ptr);
 }
@@ -155,14 +169,21 @@ uint32_t WireMesh::AppendEdge(uint32_t v0, uint32_t v1)
     if (mIndexType == grfx::INDEX_TYPE_UINT16) {
         PPX_ASSERT_MSG(v0 <= UINT16_MAX, "v0 is out of range for index type UINT16");
         PPX_ASSERT_MSG(v1 <= UINT16_MAX, "v1 is out of range for index type UINT16");
-        mIndices.reserve(mIndices.size() + 2 * sizeof(uint16_t));
+        mIndices.reserve(mIndices.size() + 2 * IndexTypeSize(mIndexType));
         AppendIndexU16(static_cast<uint16_t>(v0));
         AppendIndexU16(static_cast<uint16_t>(v1));
     }
     else if (mIndexType == grfx::INDEX_TYPE_UINT32) {
-        mIndices.reserve(mIndices.size() + 2 * sizeof(uint32_t));
+        mIndices.reserve(mIndices.size() + 2 * IndexTypeSize(mIndexType));
         AppendIndexU32(v0);
         AppendIndexU32(v1);
+    }
+    else if (mIndexType == grfx::INDEX_TYPE_UINT8) {
+        PPX_ASSERT_MSG(v0 <= UINT8_MAX, "v0 is out of range for index type UINT16");
+        PPX_ASSERT_MSG(v1 <= UINT8_MAX, "v1 is out of range for index type UINT16");
+        mIndices.reserve(mIndices.size() + 2 * IndexTypeSize(mIndexType));
+        AppendIndexU8(static_cast<uint8_t>(v0));
+        AppendIndexU8(static_cast<uint8_t>(v1));
     }
     else {
         PPX_ASSERT_MSG(false, "unknown index type");
@@ -210,16 +231,20 @@ Result WireMesh::GetEdge(uint32_t triIndex, uint32_t& v0, uint32_t& v1) const
 
     const uint8_t* pData       = mIndices.data();
     uint32_t       elementSize = grfx::IndexTypeSize(mIndexType);
+    size_t          offset     = 2 * triIndex * elementSize;
 
     if (mIndexType == grfx::INDEX_TYPE_UINT16) {
-        size_t          offset     = 2 * triIndex * elementSize;
         const uint16_t* pIndexData = reinterpret_cast<const uint16_t*>(pData + offset);
         v0                         = static_cast<uint32_t>(pIndexData[0]);
         v1                         = static_cast<uint32_t>(pIndexData[1]);
     }
     else if (mIndexType == grfx::INDEX_TYPE_UINT32) {
-        size_t          offset     = 2 * triIndex * elementSize;
         const uint32_t* pIndexData = reinterpret_cast<const uint32_t*>(pData + offset);
+        v0                         = static_cast<uint32_t>(pIndexData[0]);
+        v1                         = static_cast<uint32_t>(pIndexData[1]);
+    }
+    else if (mIndexType == grfx::INDEX_TYPE_UINT8) {
+        const uint8_t* pIndexData = pData + offset;
         v0                         = static_cast<uint32_t>(pIndexData[0]);
         v1                         = static_cast<uint32_t>(pIndexData[1]);
     }

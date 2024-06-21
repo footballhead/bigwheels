@@ -1655,7 +1655,7 @@ ppx::Result GltfLoader::LoadMeshData(
         const auto& batch = batchInfos[batchIdx];
 
         const grfx::IndexType indexType       = (batch.indexFormat == grfx::FORMAT_R32_UINT) ? grfx::INDEX_TYPE_UINT32 : batch.indexFormat == grfx::FORMAT_R16_UINT ? grfx::INDEX_TYPE_UINT16
-                                                                                                                                                                      : grfx::INDEX_TYPE_UINT8;
+                                                                                                                                                                    : grfx::INDEX_TYPE_UINT8;
         grfx::IndexBufferView indexBufferView = grfx::IndexBufferView(targetGpuBuffer, indexType, batch.indexDataOffset, batch.indexDataSize);
 
         grfx::VertexBufferView positionBufferView  = grfx::VertexBufferView(targetGpuBuffer, targetPositionElementSize, batch.positionDataOffset, batch.positionDataSize);

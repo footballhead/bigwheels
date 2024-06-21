@@ -19,6 +19,22 @@
 #define NOT_PLANAR_MSG      "cannot append planar data if attribute layout is not planar"
 
 namespace ppx {
+namespace {
+const char* ToString(grfx::IndexType indexType)
+{
+    switch (indexType) {
+        case grfx::IndexType::INDEX_TYPE_UNDEFINED:
+            return "INDEX_TYPE_UNDEFINED";
+        case grfx::IndexType::INDEX_TYPE_UINT16:
+            return "INDEX_TYPE_UINT16";
+        case grfx::IndexType::INDEX_TYPE_UINT32:
+            return "INDEX_TYPE_UINT32";
+        case grfx::IndexType::INDEX_TYPE_UINT8:
+            return "INDEX_TYPE_UINT8";
+    }
+    return "<unknown grfx::IndexType value>";
+}
+} // namespace
 
 // -------------------------------------------------------------------------------------------------
 // VertexDataProcessorBase
@@ -206,6 +222,7 @@ public:
         const uint32_t vertexBindingCount = this->GetVertexBindingCount(pGeom);
         if (vertexBindingCount != 1) {
             PPX_ASSERT_MSG(false, "interleaved layout must have 1 binding");
+            return false;
         }
         return true;
     }
@@ -304,6 +321,7 @@ public:
         const uint32_t vertexBindingCount = this->GetVertexBindingCount(pGeom);
         if (vertexBindingCount != 2) {
             PPX_ASSERT_MSG(false, "position planar layout must have 2 bindings");
+            return false;
         }
         return true;
     }
@@ -708,12 +726,6 @@ Result Geometry::Create(const GeometryCreateInfo& createInfo, Geometry* pGeometr
 
     if (createInfo.primitiveTopology != grfx::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST) {
         PPX_ASSERT_MSG(false, "only triangle list is supported");
-        return ppx::ERROR_INVALID_CREATE_ARGUMENT;
-    }
-
-    bool isValidIndexType = createInfo.indexType == grfx::INDEX_TYPE_UNDEFINED || createInfo.indexType == grfx::INDEX_TYPE_UINT8 || createInfo.indexType == grfx::INDEX_TYPE_UINT16 || createInfo.indexType == grfx::INDEX_TYPE_UINT32;
-    if (!isValidIndexType) {
-        PPX_ASSERT_MSG(false, "invalid index type: " << createInfo.indexType);
         return ppx::ERROR_INVALID_CREATE_ARGUMENT;
     }
 
@@ -1123,7 +1135,6 @@ void Geometry::AppendIndex(uint32_t idx)
 
 void Geometry::AppendIndicesTriangle(uint32_t idx0, uint32_t idx1, uint32_t idx2)
 {
-    // TODO: INDEX_TYPE_UINT8
     if (mCreateInfo.indexType == grfx::INDEX_TYPE_UINT16) {
         mIndexBuffer.Append(static_cast<uint16_t>(idx0));
         mIndexBuffer.Append(static_cast<uint16_t>(idx1));
@@ -1134,11 +1145,15 @@ void Geometry::AppendIndicesTriangle(uint32_t idx0, uint32_t idx1, uint32_t idx2
         mIndexBuffer.Append(idx1);
         mIndexBuffer.Append(idx2);
     }
+    else if (mCreateInfo.indexType == grfx::INDEX_TYPE_UINT8) {
+        mIndexBuffer.Append(static_cast<uint8_t>(idx0));
+        mIndexBuffer.Append(static_cast<uint8_t>(idx1));
+        mIndexBuffer.Append(static_cast<uint8_t>(idx2));
+    }
 }
 
 void Geometry::AppendIndicesEdge(uint32_t idx0, uint32_t idx1)
 {
-    // TODO: INDEX_TYPE_UINT8
     if (mCreateInfo.indexType == grfx::INDEX_TYPE_UINT16) {
         mIndexBuffer.Append(static_cast<uint16_t>(idx0));
         mIndexBuffer.Append(static_cast<uint16_t>(idx1));
@@ -1147,13 +1162,16 @@ void Geometry::AppendIndicesEdge(uint32_t idx0, uint32_t idx1)
         mIndexBuffer.Append(idx0);
         mIndexBuffer.Append(idx1);
     }
+    else if (mCreateInfo.indexType == grfx::INDEX_TYPE_UINT8) {
+        mIndexBuffer.Append(static_cast<uint8_t>(idx0));
+        mIndexBuffer.Append(static_cast<uint8_t>(idx1));
+    }
 }
 
 void Geometry::AppendIndicesU32(uint32_t count, const uint32_t* pIndices)
 {
-    // TODO INDEX_TYPE_UINT8
-    if (mCreateInfo.indexType == grfx::INDEX_TYPE_UINT16) {
-        PPX_ASSERT_MSG(false, "Invalid geometry index type, trying to append UINT32 data to UINT16 indices");
+    if (mCreateInfo.indexType != grfx::INDEX_TYPE_UINT32) {
+        PPX_ASSERT_MSG(false, "Invalid geometry index type, trying to append UINT32 data to " << ToString(mCreateInfo.indexType));
         return;
     }
     mIndexBuffer.Append(count, pIndices);

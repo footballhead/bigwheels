@@ -161,6 +161,7 @@ public:
     uint64_t GetDataSizeTangents() const;
     uint64_t GetDataSizeBitangents() const;
 
+    const uint8_t*  GetDataIndicesU8(uint32_t index = 0) const;
     const uint16_t* GetDataIndicesU16(uint32_t index = 0) const;
     const uint32_t* GetDataIndicesU32(uint32_t index = 0) const;
     const float3*   GetDataPositions(uint32_t index = 0) const;
@@ -199,6 +200,7 @@ public:
     static TriMesh CreateFromOBJ(const std::filesystem::path& path, const TriMeshOptions& options = TriMeshOptions());
 
 private:
+    void AppendIndexU8(uint8_t value);
     void AppendIndexU16(uint16_t value);
     void AppendIndexU32(uint32_t value);
 
@@ -212,7 +214,7 @@ private:
 private:
     grfx::IndexType      mIndexType   = grfx::INDEX_TYPE_UNDEFINED;
     TriMeshAttributeDim  mTexCoordDim = TRI_MESH_ATTRIBUTE_DIM_UNDEFINED;
-    std::vector<uint8_t> mIndices;        // Stores both 16 and 32 bit indices
+    std::vector<uint8_t> mIndices;        // Stores 8, 16, and 32 bit indices
     std::vector<float3>  mPositions;      // Vertex positions
     std::vector<float3>  mColors;         // Vertex colors
     std::vector<float3>  mNormals;        // Vertex normals
