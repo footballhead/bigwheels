@@ -20,13 +20,23 @@
 #include "tiny_obj_loader.h"
 
 namespace ppx {
+namespace {
+grfx::IndexType OverrideIndexType(grfx::IndexType indexType)
+{
+    if (indexType == grfx::INDEX_TYPE_UINT8) {
+        PPX_LOG_WARN("INDEX_TYPE_UINT8 unsupported, using INDEX_TYPE_UINT16 instead");
+        return grfx::INDEX_TYPE_UINT16;
+    }
+    return indexType;
+}
+} // namespace
 
 TriMesh::TriMesh()
 {
 }
 
 TriMesh::TriMesh(grfx::IndexType indexType)
-    : mIndexType(indexType)
+    : mIndexType(OverrideIndexType(indexType))
 {
 }
 
@@ -36,7 +46,7 @@ TriMesh::TriMesh(TriMeshAttributeDim texCoordDim)
 }
 
 TriMesh::TriMesh(grfx::IndexType indexType, TriMeshAttributeDim texCoordDim)
-    : mIndexType(indexType), mTexCoordDim(texCoordDim)
+    : mIndexType(OverrideIndexType(indexType)), mTexCoordDim(texCoordDim)
 {
 }
 
