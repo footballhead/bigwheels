@@ -297,7 +297,81 @@ TEST_P(GeometryDeathTest, AppendIndicesU32DiesIfIndexTypeIsNotU32)
     ASSERT_DEATH(planeGeometry.AppendIndicesU32(indices.size(), indices.data()), "AppendIndicesU32");
 }
 
-INSTANTIATE_TEST_SUITE_P(GeometryDeathTest, GeometryDeathTest, testing::Values(GeometryCreateInfo::Planar(), GeometryCreateInfo::PositionPlanar(), GeometryCreateInfo::Interleaved(), GeometryCreateInfo::PlanarU16(), GeometryCreateInfo::PositionPlanarU16(), GeometryCreateInfo::InterleavedU16()));
+INSTANTIATE_TEST_SUITE_P(GeometryDeathTest, GeometryDeathTest, testing::Values(GeometryCreateInfo::Planar(), GeometryCreateInfo::PositionPlanar(), GeometryCreateInfo::Interleaved(), GeometryCreateInfo::PlanarU16(), GeometryCreateInfo::PositionPlanarU16(), GeometryCreateInfo::InterleavedU16(), GeometryCreateInfo::PlanarU8(), GeometryCreateInfo::PositionPlanarU8(), GeometryCreateInfo::InterleavedU8()));
+
+using GeometryU8Test = GeometryTestWithGeometryCreateInfoParam;
+
+TEST_P(GeometryU8Test, AppendIndexPacksDataAsUint8)
+{
+    GeometryCreateInfo geometryCreateInfo = GetParam();
+    Geometry           planeGeometry;
+    EXPECT_EQ(Geometry::Create(geometryCreateInfo, &planeGeometry), ppx::SUCCESS);
+    EXPECT_EQ(planeGeometry.GetIndexType(), grfx::INDEX_TYPE_UINT8);
+
+    planeGeometry.AppendIndex(0);
+    planeGeometry.AppendIndex(1);
+    planeGeometry.AppendIndex(2);
+    EXPECT_EQ(planeGeometry.GetIndexCount(), 3);
+
+    const Geometry::Buffer* indexBuffer = planeGeometry.GetIndexBuffer();
+    ASSERT_THAT(indexBuffer, NotNull());
+    EXPECT_EQ(indexBuffer->GetElementSize(), 1);
+    EXPECT_EQ(indexBuffer->GetElementCount(), 3);
+    EXPECT_EQ(indexBuffer->GetSize(), 3);
+
+    const uint8_t* indexBufferData = reinterpret_cast<const uint8_t*>(indexBuffer->GetData());
+    ASSERT_THAT(indexBufferData, NotNull());
+    EXPECT_EQ(indexBufferData[0], 0);
+    EXPECT_EQ(indexBufferData[1], 1);
+    EXPECT_EQ(indexBufferData[2], 2);
+}
+
+TEST_P(GeometryU8Test, AppendIndicesTrianglePacksDataAsUint8)
+{
+    GeometryCreateInfo geometryCreateInfo = GetParam();
+    Geometry           planeGeometry;
+    EXPECT_EQ(Geometry::Create(geometryCreateInfo, &planeGeometry), ppx::SUCCESS);
+    EXPECT_EQ(planeGeometry.GetIndexType(), grfx::INDEX_TYPE_UINT8);
+
+    planeGeometry.AppendIndicesTriangle(0, 1, 2);
+    EXPECT_EQ(planeGeometry.GetIndexCount(), 3);
+
+    const Geometry::Buffer* indexBuffer = planeGeometry.GetIndexBuffer();
+    ASSERT_THAT(indexBuffer, NotNull());
+    EXPECT_EQ(indexBuffer->GetElementSize(), 1);
+    EXPECT_EQ(indexBuffer->GetElementCount(), 3);
+    EXPECT_EQ(indexBuffer->GetSize(), 3);
+
+    const uint8_t* indexBufferData = reinterpret_cast<const uint8_t*>(indexBuffer->GetData());
+    ASSERT_THAT(indexBufferData, NotNull());
+    EXPECT_EQ(indexBufferData[0], 0);
+    EXPECT_EQ(indexBufferData[1], 1);
+    EXPECT_EQ(indexBufferData[2], 2);
+}
+
+TEST_P(GeometryU8Test, AppendIndicesEdgePacksDataAsUint8)
+{
+    GeometryCreateInfo geometryCreateInfo = GetParam();
+    Geometry           planeGeometry;
+    EXPECT_EQ(Geometry::Create(geometryCreateInfo, &planeGeometry), ppx::SUCCESS);
+    EXPECT_EQ(planeGeometry.GetIndexType(), grfx::INDEX_TYPE_UINT8);
+
+    planeGeometry.AppendIndicesEdge(0, 1);
+    EXPECT_EQ(planeGeometry.GetIndexCount(), 2);
+
+    const Geometry::Buffer* indexBuffer = planeGeometry.GetIndexBuffer();
+    ASSERT_THAT(indexBuffer, NotNull());
+    EXPECT_EQ(indexBuffer->GetElementSize(), 1);
+    EXPECT_EQ(indexBuffer->GetElementCount(), 2);
+    EXPECT_EQ(indexBuffer->GetSize(), 2);
+
+    const uint8_t* indexBufferData = reinterpret_cast<const uint8_t*>(indexBuffer->GetData());
+    ASSERT_THAT(indexBufferData, NotNull());
+    EXPECT_EQ(indexBufferData[0], 0);
+    EXPECT_EQ(indexBufferData[1], 1);
+}
+
+INSTANTIATE_TEST_SUITE_P(GeometryU8Test, GeometryU8Test, testing::Values(GeometryCreateInfo::PlanarU8(), GeometryCreateInfo::PositionPlanarU8(), GeometryCreateInfo::InterleavedU8()));
 
 } // namespace
 } // namespace ppx
