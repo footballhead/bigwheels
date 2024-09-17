@@ -551,27 +551,33 @@ ppx::Result GltfLoader::LoadSamplerInternal(
     const cgltf_sampler*                  pGltfSampler,
     scene::Sampler**                      ppTargetSampler)
 {
-    if (IsNull(loadParams.pDevice) || IsNull(pGltfSampler) || IsNull(ppTargetSampler)) {
+    // pGltfSampler can be null
+    if (IsNull(loadParams.pDevice) || IsNull(ppTargetSampler)) {
         return ppx::ERROR_UNEXPECTED_NULL_ARGUMENT;
     }
 
     // Get GLTF object name
-    const std::string gltfObjectName = GetName(pGltfSampler);
+    const std::string gltfObjectName = IsNull(pGltfSampler) ? "<default sampler>" : GetName(pGltfSampler);
 
-    // Get GLTF object index to use as object id
-    const uint32_t gltfObjectIndex = static_cast<uint32_t>(cgltf_sampler_index(mGltfData, pGltfSampler));
-    PPX_LOG_INFO("Loading GLTF sampler[" << gltfObjectIndex << "]: " << gltfObjectName);
+    if (IsNull(pGltfSampler)) {
+        PPX_LOG_INFO("No sampler, creating default");
+    }
+    else {
+        // Get GLTF object index to use as object id
+        const uint32_t gltfObjectIndex = static_cast<uint32_t>(cgltf_sampler_index(mGltfData, pGltfSampler));
+        PPX_LOG_INFO("Loading GLTF sampler[" << gltfObjectIndex << "]: " << gltfObjectName);
+    }
 
     // Load sampler
     grfx::Sampler* pGrfxSampler = nullptr;
     //
     {
         grfx::SamplerCreateInfo createInfo = {};
-        createInfo.magFilter               = (pGltfSampler->mag_filter == GLTF_TEXTURE_FILTER_LINEAR) ? grfx::FILTER_LINEAR : grfx::FILTER_NEAREST;
-        createInfo.minFilter               = (pGltfSampler->mag_filter == GLTF_TEXTURE_FILTER_LINEAR) ? grfx::FILTER_LINEAR : grfx::FILTER_NEAREST;
+        createInfo.magFilter               = (IsNull(pGltfSampler) || pGltfSampler->mag_filter == GLTF_TEXTURE_FILTER_LINEAR) ? grfx::FILTER_LINEAR : grfx::FILTER_NEAREST;
+        createInfo.minFilter               = (IsNull(pGltfSampler) || pGltfSampler->mag_filter == GLTF_TEXTURE_FILTER_LINEAR) ? grfx::FILTER_LINEAR : grfx::FILTER_NEAREST;
         createInfo.mipmapMode              = grfx::SAMPLER_MIPMAP_MODE_LINEAR; // @TODO: add option to control this
-        createInfo.addressModeU            = ToSamplerAddressMode(pGltfSampler->wrap_s);
-        createInfo.addressModeV            = ToSamplerAddressMode(pGltfSampler->wrap_t);
+        createInfo.addressModeU            = IsNull(pGltfSampler) ? grfx::SAMPLER_ADDRESS_MODE_REPEAT : ToSamplerAddressMode(pGltfSampler->wrap_s);
+        createInfo.addressModeV            = IsNull(pGltfSampler) ? grfx::SAMPLER_ADDRESS_MODE_REPEAT : ToSamplerAddressMode(pGltfSampler->wrap_t);
         createInfo.addressModeW            = grfx::SAMPLER_ADDRESS_MODE_REPEAT;
         createInfo.mipLodBias              = 0.0f;
         createInfo.anisotropyEnable        = false;
