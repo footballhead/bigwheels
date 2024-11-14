@@ -373,6 +373,16 @@ def _make_report(path: Path, models_index):
 
     path.write_text(report)
 
+@dataclasses.dataclass
+class TestResults:
+    name: str
+    exit_status: int
+    log: Path
+    stdout: Path
+    stderr: Path
+    screenshot: Path
+
+
 def _load_and_render_model(program: Path, output: Path, asset: Path):
     """Renders a specific model using BigWheels sample app.
     
@@ -405,6 +415,47 @@ def _load_and_render_model(program: Path, output: Path, asset: Path):
     (output / 'exit_status.txt').write_text(str(process.returncode))
 
 
+@dataclasses.dataclass
+class TestCase:
+    # Asset to feed into the test program
+    asset: str
+    # Human-readable label, mostly for the report
+    description: str
+    # The screenshot sample provided, mostly for the report
+    screenshot: Path
+
+
+def _build_test_cases(model_index_path: Path) -> dict[str, TestCase]:
+    """Extracts relevant info from GLTF samples index for running tests and making a report.
+    
+    TODO
+    """
+    model_index_dir = model_index_path.absolute().parent
+
+    with args.model_index_json.open('r') as fd:
+        model_index = json.load(fd)
+
+    test_cases: dict[str, TestCase] = {}
+    for model in model_index:
+        name = model['name']
+        screenshot = model['screenshot']
+        variants = model['variants']
+        for variant_name in variants:
+            variant_file = variants[variant_name]
+
+            test_cases[f'{name}-{variant_name}'] = TestCase(
+                asset=f'glTF-Sample-Assets/Models/{name}/{variant_name}/{variant_file}',
+                description=f'{name}/{variant_name}',
+                screenshot=model_index_dir / 'Models' / name / screenshot)
+    return test_cases
+
+
+@dataclasses.dataclass
+class ReportableResult:
+    test_case: TestCase
+    test_result: TestResult
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--program', type=Path)
@@ -412,25 +463,14 @@ def main():
     parser.add_argument('--output', type=Path)
     args = parser.parse_args()
 
+    test_cases = _build_test_cases(args.model_index_json)
+
     os.mkdir(args.output)
-
-    with args.model_index_json.open('r') as fd:
-        model_index = json.load(fd)
-
-    for model in model_index:
-        name = model['name']
-        variants = model['variants']
-        for variant_name in variants:
-            name_of_test = f'{name}-{variant_name}'
-            print(name_of_test)
-
-            subtest_results_path = args.output / name_of_test
-            os.mkdir(subtest_results_path)
-
-            variant_file = variants[variant_name]
-            # TODO better way to construct this?
-            bigwheels_asset_path = f'glTF-Sample-Assets/Models/{name}/{variant_name}/{variant_file}'
-            _load_and_render_model(args.program, subtest_results_path, bigwheels_asset_path)
+    for test_name in test_cases:
+        test_case = test_cases[test_name]
+        test_output_dir = args.output / test_name
+        os.mkdir(test_output_dir)
+        _load_and_render_model(args.program, test_output_dir, test_case.asset)
 
     _make_report(args.output / 'index.html', model_index)
 
