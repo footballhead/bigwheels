@@ -8,6 +8,8 @@ import shutil
 import datetime
 import socket
 from typing import Optional
+import dataclasses
+import argparse
 
 # Filename of the screenshot produced by the program under test
 _OUTPUT_SCREENSHOT_NAME = 'actual.ppm'
@@ -374,7 +376,7 @@ def _make_report(path: Path, models_index):
     path.write_text(report)
 
 @dataclasses.dataclass
-class TestResults:
+class TestResult:
     name: str
     exit_status: int
     log: Path
@@ -404,11 +406,14 @@ def _load_and_render_model(program: Path, output: Path, asset: Path):
     """
     command = [
         program,
-        '--frame-count', 2,
-        '--screenshot-frame-number', 1,
+        '--frame-count', '2',
+        '--screenshot-frame-number', '1',
         '--gltf-scene-asset', asset,
         '--screenshot-path', _OUTPUT_SCREENSHOT_NAME,
         '--headless']
+    print(command)
+    print(output)
+    print(asset)
     process = subprocess.run(command, cwd=output, capture_output=True)
     (output / 'stdout.log').write_bytes(process.stdout)
     (output / 'stderr.log').write_bytes(process.stderr)
@@ -432,7 +437,7 @@ def _build_test_cases(model_index_path: Path) -> dict[str, TestCase]:
     """
     model_index_dir = model_index_path.absolute().parent
 
-    with args.model_index_json.open('r') as fd:
+    with model_index_path.open('r') as fd:
         model_index = json.load(fd)
 
     test_cases: dict[str, TestCase] = {}
@@ -458,9 +463,9 @@ class ReportableResult:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--program', type=Path)
-    parser.add_argument('--model-index-json', type=Path)
-    parser.add_argument('--output', type=Path)
+    parser.add_argument('--program', type=Path, required=True)
+    parser.add_argument('--model-index-json', type=Path, required=True)
+    parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
 
     test_cases = _build_test_cases(args.model_index_json)
