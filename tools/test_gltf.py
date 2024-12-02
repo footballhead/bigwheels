@@ -283,13 +283,18 @@ def _get_git_head_commit():
     return process.stdout.decode()
 
 
-def _make_report(path: Path, models_index):
+def _make_report(path: Path, model_index_path: Path):
     """Generate an HTML summary of the test run with screenshot comparison.
     
     Arguements:
         path: Destination of the HTML report
         models_index: Loaded dict of glTF-Sample-Assets/Models/model-index.json
     """
+
+    model_index_dir = model_index_path.absolute().parent
+
+    with model_index_path.open('r') as fd:
+        model_index = json.load(fd)
 
     report = '<html>'
     # Alternate row color to make table easier to parse
@@ -309,7 +314,7 @@ def _make_report(path: Path, models_index):
     report += '<th>Logs</th>'
     report += '</tr></thead>'
     report += '<tbody>\n'
-    for model_spec in models_index:
+    for model_spec in model_index:
         label = model_spec['label'] # human-readable
         name = model_spec['name'] # path in repo
         screenshot = model_spec['screenshot']
@@ -330,7 +335,7 @@ def _make_report(path: Path, models_index):
                         cwd=subtest_results_path)
 
                 # Include the glTF-Sample-Assets screenshot into the report so it is self-containted
-                expected_screenshot_path = _GLTF_SAMPLE_ASSETS / 'Models' / name / screenshot
+                expected_screenshot_path = model_index_dir / name / screenshot
                 shutil.copy2(
                     expected_screenshot_path,
                     subtest_results_path / f"expected{expected_screenshot_path.suffix}")
@@ -375,15 +380,6 @@ def _make_report(path: Path, models_index):
 
     path.write_text(report)
 
-@dataclasses.dataclass
-class TestResult:
-    name: str
-    exit_status: int
-    log: Path
-    stdout: Path
-    stderr: Path
-    screenshot: Path
-
 
 def _load_and_render_model(program: Path, output: Path, asset: Path):
     """Renders a specific model using BigWheels sample app.
@@ -411,9 +407,6 @@ def _load_and_render_model(program: Path, output: Path, asset: Path):
         '--gltf-scene-asset', asset,
         '--screenshot-path', _OUTPUT_SCREENSHOT_NAME,
         '--headless']
-    print(command)
-    print(output)
-    print(asset)
     process = subprocess.run(command, cwd=output, capture_output=True)
     (output / 'stdout.log').write_bytes(process.stdout)
     (output / 'stderr.log').write_bytes(process.stderr)
@@ -455,10 +448,13 @@ def _build_test_cases(model_index_path: Path) -> dict[str, TestCase]:
     return test_cases
 
 
-@dataclasses.dataclass
-class ReportableResult:
-    test_case: TestCase
-    test_result: TestResult
+def _run_tests(test_cases: dict[str, TestCase], output_path: Path, program: Path):
+    for test_name in test_cases:
+        print(test_name)
+        test_case = test_cases[test_name]
+        test_output_path = output_path / test_name
+        os.mkdir(test_output_path)
+        _load_and_render_model(program, test_output_path, test_case.asset)
 
 
 def main():
@@ -468,16 +464,9 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
 
-    test_cases = _build_test_cases(args.model_index_json)
-
     os.mkdir(args.output)
-    for test_name in test_cases:
-        test_case = test_cases[test_name]
-        test_output_dir = args.output / test_name
-        os.mkdir(test_output_dir)
-        _load_and_render_model(args.program, test_output_dir, test_case.asset)
-
-    _make_report(args.output / 'index.html', model_index)
+    _run_tests(_build_test_cases(args.model_index_json), args.output, args.program)
+    _make_report(args.output / 'index.html', args.model_index_json)
 
 
 if __name__ == '__main__':
