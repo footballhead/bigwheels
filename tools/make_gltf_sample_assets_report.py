@@ -11,15 +11,11 @@ from typing import Optional
 import dataclasses
 import argparse
 
-# Filename of the screenshot produced by the program under test
-_OUTPUT_SCREENSHOT_NAME = 'actual.ppm'
-_REPO_URL = 'https://github.com/google/bigwheels'
-
 # Mapping of Label -> List of associated GitHub issues. Possible options:
 # - No key? Untriaged
 # - `[]`, or `None`? No known issues
 # - Otherwise, a list of GitHub issue numbers (https://github.com/google/bigwheels/issues/)
-KNOWN_ISSUES: dict[str, Optional[list[int]]] = {
+_KNOWN_ISSUES: dict[str, Optional[list[int]]] = {
     'ABeautifulGame-glTF': [455, 460, 461, 462],
     'AlphaBlendModeTest-glTF-Embedded': [454],
     'AlphaBlendModeTest-glTF': [453],
@@ -276,32 +272,91 @@ KNOWN_ISSUES: dict[str, Optional[list[int]]] = {
     #'XmpMetadataRoundedCube-glTF-Binary': [],
 }
 
-@dataclasses.dataclass
-class TestResult:
+class _Link:
+    def __init__(self, href: str, contents: ):
+        self._href = href
+
+    def __str__(self):
+        return f'<a '
+
+class _Style:
+    def __init__(self, style: str):
+        self._contents = style
+
+    def __str__(self):
+        return f'<style>{self._contents}</style>'
+
+class _Head:
+    def __init__(self, style: _Style):
+        self._style = style
     
+    def __str__(self):
+        return f'<head>{str(self._style)}</head>'
+
+class _Body:
+    def __init__(self, *args):
+        self._children = list(**args)
+    
+    def __str__(self):
+        return f'<body>{"".join([str(child) for child in self._children])}</body>'
+
+class _Image:
+    def __init__(self, src: str, width_px: int)
+        self._src = src
+        self._width_px = width_px
+
+    def __str__(self):
+        return f'<img width="{self._width_px}px" src="{self._src}"/>'
+
+class _Paragraph:
+    def __init__(self, contents: str):
+        self._contents = contents
+    
+    def __str__(self):
+        return f'<p>{self._contents}</p>'
+
+class _Document:
+    def __init__(self, head: _Head, body: _Body):
+        self._head = head
+        self._body = body
+
+    def __str__(self):
+        return f'<!DOCTYPE html><html>{self._head}{self._body}</html>'
 
 
-def _make_report(path: Path, model_index_path: Path):
-    """Generate an HTML summary of the test run with screenshot comparison.
-    
-    Arguements:
-        path: Destination of the HTML report
-        models_index: Loaded dict of glTF-Sample-Assets/Models/model-index.json
-    """
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input', type=Path, required=True)
+    parser.add_argument('--model-index', type=Path, required=True)
+    parser.add_argument('--output', type=Path, required=True)
+    args = parser.parse_args()
+
+    os.mkdir(args.output)
 
     model_index_dir = model_index_path.absolute().parent
 
     with model_index_path.open('r') as fd:
         model_index = json.load(fd)
 
+    with (args.input / 'meta.json').open('r') as meta_file:
+        meta = json.load(meta_file)
+
+    # style alternates row color to make table easier to parse
+    doc = _Document(
+        _Head(_Style('tbody tr:nth-child(odd) { background-color: #eee; }')),
+        _Body(
+            _Paragraph(f'Time: {meta["datetime"]}'),
+            _Paragraph(f'SHA: {meta["datetime"]}'),
+        )
+    )
+
     report = '<html>'
     # Alternate row color to make table easier to parse
     report += '<head><style>tbody tr:nth-child(odd) { background-color: #eee; }</style></head>'
     report += '<body>'
-    report += f'<p>Time: {datetime.datetime.now()}</p>'
-    commit_sha = _get_git_head_commit()
-    report += f'<p>SHA: <a href="{_REPO_URL}/commit/{commit_sha}">{commit_sha}</a></p>'
-    report += f'<p>Host: {socket.getfqdn()}</p>'
+    report += f'<p>Time: {meta["datetime"]}</p>'
+    report += f'<p>SHA: <a href="https://github.com/google/bigwheels/commit/{meta["sha"]}">{meta["sha"]}</a></p>'
+    report += f'<p>Host: {meta["host"]}</p>'
     report += '<table>'
     report += '<thead><tr>'
     report += '<th>Label</th>'
@@ -377,17 +432,6 @@ def _make_report(path: Path, model_index_path: Path):
     report += '</table></body></html>'
 
     path.write_text(report)    
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--input', type=Path, required=True)
-    parser.add_argument('--model-index', type=Path, required=True)
-    parser.add_argument('--output', type=Path, required=True)
-    args = parser.parse_args()
-
-    os.mkdir(args.output)
-    _make_report(args.output / 'index.html', args.model_index_json)
 
 
 if __name__ == '__main__':
