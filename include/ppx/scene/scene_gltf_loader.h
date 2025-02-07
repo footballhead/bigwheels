@@ -99,25 +99,6 @@ public:
     // outside of a scene. Caching is not used.
     //
     // ---------------------------------------------------------------------------------------------
-    ppx::Result LoadSampler(
-        grfx::Device*    pDevice,
-        uint32_t         samplerIndex,
-        scene::Sampler** ppTargetSampler);
-
-    ppx::Result LoadSampler(
-        grfx::Device*      pDevice,
-        const std::string& samplerName,
-        scene::Sampler**   ppTargetSampler);
-
-    ppx::Result LoadImage(
-        grfx::Device*  pDevice,
-        uint32_t       imageIndex,
-        scene::Image** ppTargetImage);
-
-    ppx::Result LoadImage(
-        grfx::Device*      pDevice,
-        const std::string& imageName,
-        scene::Image**     ppTargetImage);
 
     ppx::Result LoadTexture(
         grfx::Device*    pDevice,
@@ -276,27 +257,15 @@ private:
     uint64_t CalculateMaterialObjectId(const GltfLoader::InternalLoadParams& loadParams, uint32_t objectIndex);
     uint64_t CalculateMeshObjectId(const GltfLoader::InternalLoadParams& loadParams, uint32_t objectIndexk);
 
-    // Creates a scene::Sampler based off properties in cgltf_sampler.
     ppx::Result LoadSamplerInternal(
         const GltfLoader::InternalLoadParams& loadParams,
         const cgltf_sampler&                  gltfSampler,
-        scene::Sampler**                      ppTargetSampler);
-
-    // Checks the ResourceManager first for a suitable sampler. Otherwise, calls and caches LoadSamplerInternal
-    ppx::Result FetchSamplerInternal(
-        const GltfLoader::InternalLoadParams& loadParams,
-        const cgltf_sampler&                  gltfSampler,
-        scene::SamplerRef&                    outSampler);
+        scene::SamplerRef&                    outTargetSampler);
 
     ppx::Result LoadImageInternal(
         const GltfLoader::InternalLoadParams& loadParams,
-        const cgltf_image*                    pGltfImage,
-        scene::Image**                        ppTargetImage);
-
-    ppx::Result FetchImageInternal(
-        const GltfLoader::InternalLoadParams& loadParams,
-        const cgltf_image*                    pGltfImage,
-        scene::ImageRef&                      outImage);
+        const cgltf_image&                    pGltfImage,
+        scene::ImageRef&                        outTargetImage);
 
     ppx::Result LoadTextureInternal(
         const GltfLoader::InternalLoadParams& loadParams,

@@ -359,7 +359,7 @@ ppx::Result ValidateAccessorIndexType(const cgltf_accessor* pGltfAccessor, grfx:
     return ppx::ERROR_SCENE_INVALID_SOURCE_GEOMETRY_INDEX_TYPE;
 }
 
-ppx::Result CreateDefaultSampler(grfx::Device& device, scene::Sampler** ppOutSampler)
+ppx::Result CreateDefaultSampler(grfx::Device& device, scene::SamplerRef& outSampler)
 {
     PPX_LOG_INFO("Using default sampler");
 
@@ -386,29 +386,12 @@ ppx::Result CreateDefaultSampler(grfx::Device& device, scene::Sampler** ppOutSam
         return ppxres;
     }
 
-    scene::Sampler* pSampler = new scene::Sampler(pGrfxSampler);
-    if (!pSampler) {
+    outSampler = std::make_shared<scene::Sampler>(pGrfxSampler);
+    if (!outSampler) {
         device.DestroySampler(pGrfxSampler);
         return ppx::ERROR_ALLOCATION_FAILED;
     }
-    pSampler->SetName("<default sampler>");
-
-    *ppOutSampler = pSampler;
-    return ppx::SUCCESS;
-}
-
-ppx::Result CreateDefaultSampler(grfx::Device& device, scene::SamplerRef& outSampler)
-{
-    scene::Sampler* pSampler = nullptr;
-    if (ppx::Result ppxres = CreateDefaultSampler(device, &pSampler); Failed(ppxres)) {
-        return ppxres;
-    }
-
-    outSampler = scene::MakeRef(pSampler);
-    if (!outSampler) {
-        delete pSampler;
-        return ppx::ERROR_ALLOCATION_FAILED;
-    }
+    outSampler->SetName("<default sampler>");
 
     return ppx::SUCCESS;
 }
@@ -628,17 +611,21 @@ uint64_t GltfLoader::CalculateMeshObjectId(const GltfLoader::InternalLoadParams&
 ppx::Result GltfLoader::LoadSamplerInternal(
     const GltfLoader::InternalLoadParams& loadParams,
     const cgltf_sampler&                  gltfSampler,
-    scene::Sampler**                      ppTargetSampler)
+    scene::SamplerRef&                    outTargetSampler)
 {
-    if (IsNull(loadParams.pDevice) || IsNull(ppTargetSampler)) {
+    if (IsNull(loadParams.pDevice)) {
         return ppx::ERROR_UNEXPECTED_NULL_ARGUMENT;
     }
 
-    // Get GLTF object name
-    const std::string gltfObjectName = GetName(&gltfSampler);
-
-    // Get GLTF object index to use as object id
-    const uint32_t gltfObjectIndex = static_cast<uint32_t>(cgltf_sampler_index(mGltfData, &gltfSampler));
+    const std::string gltfObjectName  = GetName(&gltfSampler);
+    const uint32_t    gltfObjectIndex = static_cast<uint32_t>(cgltf_sampler_index(mGltfData, &gltfSampler));
+    if (loadParams.pResourceManager) {
+        const uint64_t objectId = CalculateSamplerObjectId(loadParams, gltfObjectIndex);
+        if (loadParams.pResourceManager->Find(objectId, outTargetSampler)) {
+            PPX_LOG_INFO("Fetched cached sampler[" << gltfObjectIndex << "]: " << gltfObjectName << " (objectId=" << objectId << ")");
+            return ppx::SUCCESS;
+        }
+    }
     PPX_LOG_INFO("Loading GLTF sampler[" << gltfObjectIndex << "]: " << gltfObjectName);
 
     // Load sampler
@@ -667,63 +654,16 @@ ppx::Result GltfLoader::LoadSamplerInternal(
         }
     }
 
-    // Create target object
-    auto pSampler = new scene::Sampler(pGrfxSampler);
-    if (IsNull(pSampler)) {
+    outTargetSampler = std::make_shared<scene::Sampler>(pGrfxSampler);
+    if (IsNull(outTargetSampler)) {
         loadParams.pDevice->DestroySampler(pGrfxSampler);
         return ppx::ERROR_ALLOCATION_FAILED;
     }
 
-    // Set name
-    pSampler->SetName(gltfObjectName);
+    outTargetSampler->SetName(gltfObjectName);
 
-    // Assign output
-    *ppTargetSampler = pSampler;
-
-    return ppx::SUCCESS;
-}
-
-ppx::Result GltfLoader::FetchSamplerInternal(
-    const GltfLoader::InternalLoadParams& loadParams,
-    const cgltf_sampler&                  gltfSampler,
-    scene::SamplerRef&                    outSampler)
-{
-    if (IsNull(loadParams.pDevice) || IsNull(loadParams.pResourceManager)) {
-        return ppx::ERROR_UNEXPECTED_NULL_ARGUMENT;
-    }
-
-    // Get GLTF object name
-    const std::string gltfObjectName = GetName(&gltfSampler);
-
-    // Get GLTF object index to use as object id
-    const uint32_t gltfObjectIndex = static_cast<uint32_t>(cgltf_sampler_index(mGltfData, &gltfSampler));
-
-    // Cached load if object was previously cached
-    const uint64_t objectId = CalculateSamplerObjectId(loadParams, gltfObjectIndex);
-    if (loadParams.pResourceManager->Find(objectId, outSampler)) {
-        PPX_LOG_INFO("Fetched cached sampler[" << gltfObjectIndex << "]: " << gltfObjectName << " (objectId=" << objectId << ")");
-        return ppx::SUCCESS;
-    }
-
-    // Cached failed, so load object
-    scene::Sampler* pSampler = nullptr;
-    //
-    auto ppxres = LoadSamplerInternal(loadParams, gltfSampler, &pSampler);
-    if (Failed(ppxres)) {
-        return ppxres;
-    }
-    PPX_ASSERT_NULL_ARG(pSampler);
-
-    // Create object ref
-    outSampler = scene::MakeRef(pSampler);
-    if (!outSampler) {
-        delete pSampler;
-        return ppx::ERROR_ALLOCATION_FAILED;
-    }
-
-    // Cache object
-    {
-        loadParams.pResourceManager->Cache(objectId, outSampler);
+    if (loadParams.pResourceManager) {
+        loadParams.pResourceManager->Cache(objectId, outTargetSampler);
         PPX_LOG_INFO("   ...cached sampler[" << gltfObjectIndex << "]: " << gltfObjectName << " (objectId=" << objectId << ")");
     }
 
@@ -732,27 +672,32 @@ ppx::Result GltfLoader::FetchSamplerInternal(
 
 ppx::Result GltfLoader::LoadImageInternal(
     const GltfLoader::InternalLoadParams& loadParams,
-    const cgltf_image*                    pGltfImage,
-    scene::Image**                        ppTargetImage)
+    const cgltf_image&                    gltfImage,
+    scene::ImageRef&                      outTargetImage)
 {
-    if (IsNull(loadParams.pDevice) || IsNull(pGltfImage) || IsNull(ppTargetImage)) {
+    if (IsNull(loadParams.pDevice)) {
         return ppx::ERROR_UNEXPECTED_NULL_ARGUMENT;
     }
 
-    // Get GLTF object name
-    const std::string gltfObjectName = GetName(pGltfImage);
-
-    // Get GLTF object index to use as object id
-    const uint32_t gltfObjectIndex = static_cast<uint32_t>(cgltf_image_index(mGltfData, pGltfImage));
+    const std::string gltfObjectName  = GetName(&gltfImage);
+    const uint32_t    gltfObjectIndex = static_cast<uint32_t>(cgltf_image_index(mGltfData, &gltfImage));
     PPX_LOG_INFO("Loading GLTF image[" << gltfObjectIndex << "]: " << gltfObjectName);
+
+    if (loadParams.pResourceManager) {
+        const uint64_t objectId = CalculateImageObjectId(loadParams, gltfObjectIndex);
+        if (loadParams.pResourceManager->Find(objectId, outImage)) {
+            PPX_LOG_INFO("Fetched cached image[" << gltfObjectIndex << "]: " << gltfObjectName << " (objectId=" << objectId << ")");
+            return ppx::SUCCESS;
+        }
+    }
 
     // Load image
     grfx::Image* pGrfxImage = nullptr;
     //
-    if (!IsNull(pGltfImage->uri)) {
-        std::filesystem::path filePath = mGltfTextureDir / ToStringSafe(pGltfImage->uri);
+    if (!IsNull(gltfImage.uri)) {
+        std::filesystem::path filePath = mGltfTextureDir / ToStringSafe(gltfImage.uri);
         if (!std::filesystem::exists(filePath)) {
-            PPX_LOG_ERROR("GLTF file references an image file that doesn't exist (image=" << ToStringSafe(pGltfImage->name) << ", uri=" << ToStringSafe(pGltfImage->uri) << ", file=" << filePath);
+            PPX_LOG_ERROR("GLTF file references an image file that doesn't exist (image=" << ToStringSafe(gltfImage.name) << ", uri=" << ToStringSafe(gltfImage.uri) << ", file=" << filePath);
             return ppx::ERROR_PATH_DOES_NOT_EXIST;
         }
 
@@ -764,9 +709,9 @@ ppx::Result GltfLoader::LoadImageInternal(
             return ppxres;
         }
     }
-    else if (!IsNull(pGltfImage->buffer_view)) {
-        const size_t dataSize = static_cast<size_t>(pGltfImage->buffer_view->size);
-        const void*  pData    = GetStartAddress(pGltfImage->buffer_view);
+    else if (!IsNull(gltfImage.buffer_view)) {
+        const size_t dataSize = static_cast<size_t>(gltfImage.buffer_view->size);
+        const void*  pData    = GetStartAddress(gltfImage.buffer_view);
         if (IsNull(pData)) {
             return ppx::ERROR_BAD_DATA_SOURCE;
         }
@@ -813,63 +758,16 @@ ppx::Result GltfLoader::LoadImageInternal(
         }
     }
 
-    // Creat target object
-    auto pImage = new scene::Image(pGrfxImage, pGrfxImageView);
+    outTargetImage = std::make_shared<scene::Image>(pGrfxImage, pGrfxImageView);
     if (IsNull(pImage)) {
         loadParams.pDevice->DestroySampledImageView(pGrfxImageView);
         loadParams.pDevice->DestroyImage(pGrfxImage);
         return ppx::ERROR_ALLOCATION_FAILED;
     }
 
-    // Set name
-    pImage->SetName(gltfObjectName);
+    outTargetImage->SetName(gltfObjectName);
 
-    // Assign output
-    *ppTargetImage = pImage;
-
-    return ppx::SUCCESS;
-}
-
-ppx::Result GltfLoader::FetchImageInternal(
-    const GltfLoader::InternalLoadParams& loadParams,
-    const cgltf_image*                    pGltfImage,
-    scene::ImageRef&                      outImage)
-{
-    if (IsNull(loadParams.pDevice) || IsNull(loadParams.pResourceManager) || IsNull(pGltfImage)) {
-        return ppx::ERROR_UNEXPECTED_NULL_ARGUMENT;
-    }
-
-    // Get GLTF object name
-    const std::string gltfObjectName = GetName(pGltfImage);
-
-    // Get GLTF object index to use as object id
-    const uint32_t gltfObjectIndex = static_cast<uint32_t>(cgltf_image_index(mGltfData, pGltfImage));
-
-    // Cached load if object was previously cached
-    const uint64_t objectId = CalculateImageObjectId(loadParams, gltfObjectIndex);
-    if (loadParams.pResourceManager->Find(objectId, outImage)) {
-        PPX_LOG_INFO("Fetched cached image[" << gltfObjectIndex << "]: " << gltfObjectName << " (objectId=" << objectId << ")");
-        return ppx::SUCCESS;
-    }
-
-    // Cached failed, so load object
-    scene::Image* pImage = nullptr;
-    //
-    auto ppxres = LoadImageInternal(loadParams, pGltfImage, &pImage);
-    if (Failed(ppxres)) {
-        return ppxres;
-    }
-    PPX_ASSERT_NULL_ARG(pImage);
-
-    // Create object ref
-    outImage = scene::MakeRef(pImage);
-    if (!outImage) {
-        delete pImage;
-        return ppx::ERROR_ALLOCATION_FAILED;
-    }
-
-    // Cache object
-    {
+    if (loadParams.pResourceManager) {
         loadParams.pResourceManager->Cache(objectId, outImage);
         PPX_LOG_INFO("   ...cached image[" << gltfObjectIndex << "]: " << gltfObjectName << " (objectId=" << objectId << ")");
     }
@@ -880,88 +778,47 @@ ppx::Result GltfLoader::FetchImageInternal(
 ppx::Result GltfLoader::LoadTextureInternal(
     const GltfLoader::InternalLoadParams& loadParams,
     const cgltf_texture*                  pGltfTexture,
-    scene::Texture**                      ppTexture)
+    scene::TextureRef**                   ppTexture)
 {
     if (IsNull(loadParams.pDevice) || IsNull(pGltfTexture) || IsNull(ppTexture)) {
         return ppx::ERROR_UNEXPECTED_NULL_ARGUMENT;
     }
 
-    // Get GLTF object name
     const std::string gltfTextureObjectName = GetName(pGltfTexture);
     const std::string gltfImageObjectName   = IsNull(pGltfTexture->image) ? "<NULL>" : GetName(pGltfTexture->image);
 
-    // Get GLTF object index to use as object id
     const uint32_t gltfObjectIndex = static_cast<uint32_t>(cgltf_texture_index(mGltfData, pGltfTexture));
     // Textures are often unnamed, so include image name to make log smg more meaningful.
     PPX_LOG_INFO("Loading GLTF texture[" << gltfObjectIndex << "]: " << gltfTextureObjectName << " (image=" << gltfImageObjectName << ")");
 
-    // Required objects
     scene::SamplerRef targetSampler = nullptr;
-    scene::ImageRef   targetImage   = nullptr;
-
-    // Fetch if there's a resource manager...
-    if (!IsNull(loadParams.pResourceManager)) {
-        if (!IsNull(pGltfTexture->sampler)) {
-            auto ppxres = FetchSamplerInternal(loadParams, *pGltfTexture->sampler, targetSampler);
-            if (Failed(ppxres)) {
+    if (!IsNull(pGltfTexture->sampler)) {
+        if (ppx::Result ppxres = LoadSamplerInternal(loadParams, *pGltfTexture->sampler, targetSampler); Failed(ppxres)) {
+            return ppxres;
+        }
+    }
+    else {
+        constexpr auto kDefaultSamplerId = std::numeric_limits<uint64_t>::max();
+        if (!loadParams.pResourceManager->Find(kDefaultSamplerId, targetSampler)) {
+            if (ppx::Result ppxres = CreateDefaultSampler(*loadParams.pDevice, targetSampler); Failed(ppxres)) {
                 return ppxres;
             }
-        }
-        else {
-            constexpr auto kDefaultSamplerId = std::numeric_limits<uint64_t>::max();
-            if (!loadParams.pResourceManager->Find(kDefaultSamplerId, targetSampler)) {
-                if (ppx::Result ppxres = CreateDefaultSampler(*loadParams.pDevice, targetSampler); Failed(ppxres)) {
-                    return ppxres;
-                }
-                loadParams.pResourceManager->Cache(kDefaultSamplerId, targetSampler);
-            }
-        }
-
-        ppx::Result ppxres = FetchImageInternal(loadParams, pGltfTexture->image, targetImage);
-        if (Failed(ppxres)) {
-            return ppxres;
-        }
-    }
-    // ...otherwise load!
-    else {
-        scene::Sampler* pTargetSampler = nullptr;
-        auto            ppxres         = IsNull(pGltfTexture->sampler) ? CreateDefaultSampler(*loadParams.pDevice, &pTargetSampler) : LoadSamplerInternal(loadParams, *pGltfTexture->sampler, &pTargetSampler);
-        if (Failed(ppxres)) {
-            return ppxres;
-        }
-        PPX_ASSERT_NULL_ARG(pTargetSampler);
-
-        targetSampler = scene::MakeRef(pTargetSampler);
-        if (!targetSampler) {
-            delete pTargetSampler;
-            return ppx::ERROR_ALLOCATION_FAILED;
-        }
-
-        // Load image
-        scene::Image* pTargetImage = nullptr;
-        ppxres                     = LoadImageInternal(loadParams, pGltfTexture->image, &pTargetImage);
-        if (Failed(ppxres)) {
-            return ppxres;
-        }
-        PPX_ASSERT_NULL_ARG(pTargetImage);
-
-        targetImage = scene::MakeRef(pTargetImage);
-        if (!targetImage) {
-            delete pTargetImage;
-            return ppx::ERROR_ALLOCATION_FAILED;
+            loadParams.pResourceManager->Cache(kDefaultSamplerId, targetSampler);
         }
     }
 
-    // Create target object
+    scene::ImageRef targetImage = nullptr;
+    if (ppx::Result ppxres = LoadImageInternal(loadParams, pGltfTexture->image, &pTargetImage); Failed(ppxres)) {
+        return ppxres;
+    }
+
     auto pTexture = new scene::Texture(targetImage, targetSampler);
     if (IsNull(pTexture)) {
         return ppx::ERROR_ALLOCATION_FAILED;
     }
 
-    // Set name
     pTexture->SetName(gltfTextureObjectName);
 
-    // Assign output
     *ppTexture = pTexture;
 
     return ppx::SUCCESS;
@@ -2454,118 +2311,6 @@ int32_t GltfLoader::GetSceneIndex(const std::string& name) const
 
     int32_t index = (pGltfObject >= arrayEnd) ? -1 : static_cast<int32_t>(pGltfObject - arrayBegin);
     return index;
-}
-
-ppx::Result GltfLoader::LoadSampler(
-    grfx::Device*    pDevice,
-    uint32_t         samplerIndex,
-    scene::Sampler** ppTargetSampler)
-{
-    if (IsNull(pDevice)) {
-        return ppx::ERROR_UNEXPECTED_NULL_ARGUMENT;
-    }
-
-    if (!HasGltfData()) {
-        return ppx::ERROR_SCENE_NO_SOURCE_DATA;
-    }
-
-    if (samplerIndex >= static_cast<uint32_t>(mGltfData->samplers_count)) {
-        return ppx::ERROR_OUT_OF_RANGE;
-    }
-
-    auto pGltfSampler = &mGltfData->samplers[samplerIndex];
-    if (IsNull(pGltfSampler)) {
-        return ppx::ERROR_ELEMENT_NOT_FOUND;
-    }
-
-    GltfLoader::InternalLoadParams loadParams = {};
-    loadParams.pDevice                        = pDevice;
-
-    auto ppxres = LoadSamplerInternal(
-        loadParams,
-        *pGltfSampler,
-        ppTargetSampler);
-    if (Failed(ppxres)) {
-        return ppxres;
-    }
-
-    return ppx::SUCCESS;
-}
-
-ppx::Result GltfLoader::LoadSampler(
-    grfx::Device*      pDevice,
-    const std::string& samplerName,
-    scene::Sampler**   ppTargetSampler)
-{
-    if (!HasGltfData()) {
-        return ppx::ERROR_SCENE_NO_SOURCE_DATA;
-    }
-
-    int32_t meshIndex = this->GetSamplerIndex(samplerName);
-    if (meshIndex < 0) {
-        return ppx::ERROR_ELEMENT_NOT_FOUND;
-    }
-
-    return LoadSampler(
-        pDevice,
-        static_cast<uint32_t>(meshIndex),
-        ppTargetSampler);
-}
-
-ppx::Result GltfLoader::LoadImage(
-    grfx::Device*  pDevice,
-    uint32_t       imageIndex,
-    scene::Image** ppTargetImage)
-{
-    if (IsNull(pDevice)) {
-        return ppx::ERROR_UNEXPECTED_NULL_ARGUMENT;
-    }
-
-    if (!HasGltfData()) {
-        return ppx::ERROR_SCENE_NO_SOURCE_DATA;
-    }
-
-    if (imageIndex >= static_cast<uint32_t>(mGltfData->samplers_count)) {
-        return ppx::ERROR_OUT_OF_RANGE;
-    }
-
-    auto pGltfImage = &mGltfData->images[imageIndex];
-    if (IsNull(pGltfImage)) {
-        return ppx::ERROR_ELEMENT_NOT_FOUND;
-    }
-
-    GltfLoader::InternalLoadParams loadParams = {};
-    loadParams.pDevice                        = pDevice;
-
-    auto ppxres = LoadImageInternal(
-        loadParams,
-        pGltfImage,
-        ppTargetImage);
-    if (Failed(ppxres)) {
-        return ppxres;
-    }
-
-    return ppx::SUCCESS;
-}
-
-ppx::Result GltfLoader::LoadImage(
-    grfx::Device*      pDevice,
-    const std::string& imageName,
-    scene::Image**     ppTargetImage)
-{
-    if (!HasGltfData()) {
-        return ppx::ERROR_SCENE_NO_SOURCE_DATA;
-    }
-
-    int32_t imageIndex = this->GetImageIndex(imageName);
-    if (imageIndex < 0) {
-        return ppx::ERROR_ELEMENT_NOT_FOUND;
-    }
-
-    return LoadImage(
-        pDevice,
-        static_cast<uint32_t>(imageIndex),
-        ppTargetImage);
 }
 
 ppx::Result GltfLoader::LoadTexture(
