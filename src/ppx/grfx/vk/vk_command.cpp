@@ -24,6 +24,8 @@
 
 #include "ppx/grfx/vk/vk_profiler_fn_wrapper.h"
 
+extern PFN_vkCmdInsertDebugUtilsLabelEXT fnVkCmdInsertDebugUtilsLabelEXT;
+
 namespace ppx {
 namespace grfx {
 namespace vk {
@@ -120,6 +122,11 @@ void CommandBuffer::BeginRenderPassImpl(const grfx::RenderPassBeginInfo* pBeginI
 void CommandBuffer::EndRenderPassImpl()
 {
     vk::CmdEndRenderPass(mCommandBuffer);
+    VkDebugUtilsLabelEXT markerInfo;
+    markerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+    markerInfo.pNext = NULL;
+    markerInfo.pLabelName = "vr-marker,frame_end,type,application";
+    fnVkCmdInsertDebugUtilsLabelEXT(mCommandBuffer, &markerInfo);
 }
 
 void CommandBuffer::BeginRenderingImpl(const grfx::RenderingInfo* pRenderingInfo)

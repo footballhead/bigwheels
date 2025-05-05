@@ -318,6 +318,7 @@ void CubeXrApp::Render()
                 DrawImGui(frame.cmd);
             }
         }
+        // NOTE: hitchens has hacked this function to insert a debug marker
         frame.cmd->EndRenderPass();
         if (!IsXrEnabled()) {
             frame.cmd->TransitionImageLayout(renderPass->GetRenderTargetImage(0), PPX_ALL_SUBRESOURCES, grfx::RESOURCE_STATE_RENDER_TARGET, grfx::RESOURCE_STATE_PRESENT);

@@ -18,6 +18,8 @@
 #include "ppx/grfx/vk/vk_profiler_fn_wrapper.h"
 #include "ppx/grfx/vk/vk_swapchain.h"
 
+PFN_vkCmdInsertDebugUtilsLabelEXT fnVkCmdInsertDebugUtilsLabelEXT;
+
 namespace ppx {
 namespace grfx {
 namespace vk {
@@ -201,8 +203,16 @@ Result Instance::ConfigureLayersAndExtensions(const grfx::InstanceCreateInfo* pC
 
 Result Instance::CreateDebugUtils(const grfx::InstanceCreateInfo* pCreateInfo)
 {
+    fnVkCmdInsertDebugUtilsLabelEXT = (PFN_vkCmdInsertDebugUtilsLabelEXT)vkGetInstanceProcAddr(mInstance, "vkCmdInsertDebugUtilsLabelEXT");
+    if (fnVkCmdInsertDebugUtilsLabelEXT == nullptr) {
+        PPX_ASSERT_MSG(false, "vkGetInstanceProcAddr failed for vkCmdInsertDebugUtilsLabelEXT");
+        return ppx::ERROR_API_FAILURE;
+    }
+
     // Debug utils
     if (pCreateInfo->enableDebug) {
+
+        
         // vkCreateDebugUtilsMessengerEXT
         mFnCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(mInstance, "vkCreateDebugUtilsMessengerEXT");
         if (mFnCreateDebugUtilsMessengerEXT == nullptr) {
