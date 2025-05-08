@@ -1360,13 +1360,13 @@ int Application::Run(int argc, char** argv)
     // Shutdown Imgui
     ShutdownImGui();
 
-    // Shutdown graphics
-    ShutdownGrfx();
-
 #if defined(PPX_BUILD_XR)
     // Destroy Xr
     DestroyXRComponent();
 #endif
+
+    // Shutdown graphics
+    ShutdownGrfx();
 
     // Destroy window
     DestroyPlatformWindow();

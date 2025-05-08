@@ -68,11 +68,14 @@ static void defaultCommandHandler(struct android_app* app, int32_t cmd)
         case APP_CMD_DESTROY:
             gApplicationState = DESTROYED;
             break;
+        case APP_CMD_WINDOW_RESIZED:
+        case APP_CMD_CONTENT_RECT_CHANGED:
+        case APP_CMD_WINDOW_REDRAW_NEEDED:
+            // Drop resize events, likely that the window has been destroyed.
+            break;
+
         case APP_CMD_INIT_WINDOW:
         case APP_CMD_TERM_WINDOW:
-        case APP_CMD_WINDOW_RESIZED:
-        case APP_CMD_WINDOW_REDRAW_NEEDED:
-        case APP_CMD_CONTENT_RECT_CHANGED:
             PPX_ASSERT_MSG(false, "Handled in the default-handler a message we shouldn't. This is a bug.");
             break;
         default:
