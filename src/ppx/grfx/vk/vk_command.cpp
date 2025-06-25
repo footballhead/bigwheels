@@ -114,12 +114,16 @@ void CommandBuffer::BeginRenderPassImpl(const grfx::RenderPassBeginInfo* pBeginI
     vkbi.clearValueCount       = clearValueCount;
     vkbi.pClearValues          = clearValues;
 
-    vk::CmdBeginRenderPass(mCommandBuffer, &vkbi, VK_SUBPASS_CONTENTS_INLINE);
+    VkSubpassBeginInfoKHR subpassBeginInfo = {VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO_KHR};
+    subpassBeginInfo.contents = VK_SUBPASS_CONTENTS_INLINE;
+
+    myCmdBeginRenderPass2KHR(mCommandBuffer, &vkbi, &subpassBeginInfo);
 }
 
 void CommandBuffer::EndRenderPassImpl()
 {
-    vk::CmdEndRenderPass(mCommandBuffer);
+    VkSubpassEndInfoKHR info = {VK_STRUCTURE_TYPE_SUBPASS_END_INFO_KHR};
+    myCmdEndRenderPass2KHR(mCommandBuffer, &info);
 }
 
 void CommandBuffer::BeginRenderingImpl(const grfx::RenderingInfo* pRenderingInfo)

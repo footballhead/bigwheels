@@ -146,6 +146,9 @@ extern PFN_vkCmdBeginRenderingKHR CmdBeginRenderingKHR;
 extern PFN_vkCmdEndRenderingKHR   CmdEndRenderingKHR;
 #endif
 
+extern PFN_vkCmdBeginRenderPass2KHR myCmdBeginRenderPass2KHR;
+extern PFN_vkCmdEndRenderPass2KHR   myCmdEndRenderPass2KHR;
+
 } // namespace vk
 } // namespace grfx
 } // namespace ppx

@@ -45,6 +45,9 @@ PFN_vkCmdBeginRenderingKHR CmdBeginRenderingKHR = nullptr;
 PFN_vkCmdEndRenderingKHR   CmdEndRenderingKHR   = nullptr;
 #endif
 
+PFN_vkCmdBeginRenderPass2KHR myCmdBeginRenderPass2KHR = nullptr;
+PFN_vkCmdEndRenderPass2KHR   myCmdEndRenderPass2KHR   = nullptr;
+
 Result Device::ConfigureQueueInfo(const grfx::DeviceCreateInfo* pCreateInfo, std::vector<float>& queuePriorities, std::vector<VkDeviceQueueCreateInfo>& queueCreateInfos)
 {
     VkPhysicalDevicePtr gpu = ToApi(pCreateInfo->pGpu)->GetVkGpu();
@@ -797,6 +800,9 @@ Result Device::CreateApiObjects(const grfx::DeviceCreateInfo* pCreateInfo)
         CmdEndRenderingKHR   = (PFN_vkCmdEndRenderingKHR)vkGetDeviceProcAddr(mDevice, "vkCmdEndRenderingKHR");
     }
 #endif
+
+    myCmdBeginRenderPass2KHR = (PFN_vkCmdBeginRenderPass2KHR)vkGetDeviceProcAddr(mDevice, "vkCmdBeginRenderPass2KHR");
+    myCmdEndRenderPass2KHR   = (PFN_vkCmdEndRenderPass2KHR)vkGetDeviceProcAddr(mDevice, "vkCmdEndRenderPass2KHR");
 
     // VMA
     {
