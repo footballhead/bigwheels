@@ -140,6 +140,8 @@ Result Device::ConfigureExtensions(const grfx::DeviceCreateInfo* pCreateInfo)
         Unique(mFoundExtensions);
     }
 
+    mExtensions.push_back(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME);
+
     // Swapchains extension
     if (GetInstance()->IsSwapchainEnabled()) {
         mExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
@@ -269,7 +271,7 @@ Result Device::ConfigureFeatures(const grfx::DeviceCreateInfo* pCreateInfo, VkPh
     //
     // Before setting something to VK_TRUE, check for missingFeatures below!
     features                                      = {};
-    features.fillModeNonSolid                     = VK_TRUE;
+    features.fillModeNonSolid                     = VK_FALSE;
     features.fullDrawIndexUint32                  = VK_TRUE;
     features.imageCubeArray                       = VK_TRUE;
     features.independentBlend                     = foundFeatures.independentBlend;
