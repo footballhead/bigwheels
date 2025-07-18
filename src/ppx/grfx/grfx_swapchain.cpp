@@ -92,8 +92,7 @@ Result Swapchain::Create(const grfx::SwapchainCreateInfo* pCreateInfo)
         return ppxres;
     }
 
-    ppxres = CreateSemaphores();
-    if (Failed(ppxres)) {
+    if (ppxres = CreatePresentationReadySemaphores(); Failed(ppxres)) {
         return ppxres;
     }
 
@@ -122,7 +121,7 @@ Result Swapchain::Create(const grfx::SwapchainCreateInfo* pCreateInfo)
 
 void Swapchain::Destroy()
 {
-    DestroySemaphores();
+    DestroyPresentationReadySemaphores();
 
     DestroyRenderPasses();
 
@@ -357,13 +356,13 @@ void Swapchain::DestroyRenderPasses()
     mLoadRenderPasses.clear();
 }
 
-Result Swapchain::CreateSemaphores()
+Result Swapchain::CreatePresentationReadySemaphores()
 {
     uint32_t imageCount = CountU32(mColorImages);
     PPX_ASSERT_MSG((imageCount > 0), "No color images found for swapchain semaphores");
 
     for (size_t i = 0; i < imageCount; ++i) {
-        grfx::SemaphorePtr        semaphore;
+        grfx::Semaphore*          semaphore;
         grfx::SemaphoreCreateInfo createInfo = {};
         auto                      ppxres     = GetDevice()->CreateSemaphore(&createInfo, &semaphore);
         if (Failed(ppxres)) {
@@ -376,7 +375,7 @@ Result Swapchain::CreateSemaphores()
     return ppx::SUCCESS;
 }
 
-void Swapchain::DestroySemaphores()
+void Swapchain::DestroyPresentationReadySemaphores()
 {
     for (auto& elem : mPresentationReadySemaphores) {
         if (elem) {
@@ -455,15 +454,6 @@ Result Swapchain::GetDepthStencilView(uint32_t imageIndex, grfx::AttachmentLoadO
     return ppx::SUCCESS;
 }
 
-Result Swapchain::GetPresentationReadySemaphore(uint32_t imageIndex, grfx::Semaphore** ppSemaphore) const
-{
-    if (!IsIndexInRange(imageIndex, mPresentationReadySemaphores)) {
-        return ppx::ERROR_OUT_OF_RANGE;
-    }
-    *ppSemaphore = mPresentationReadySemaphores[imageIndex];
-    return ppx::SUCCESS;
-}
-
 grfx::ImagePtr Swapchain::GetColorImage(uint32_t imageIndex) const
 {
     grfx::ImagePtr object;
@@ -499,11 +489,9 @@ grfx::DepthStencilViewPtr Swapchain::GetDepthStencilView(uint32_t imageIndex, gr
     return object;
 }
 
-grfx::SemaphorePtr Swapchain::GetPresentationReadySemaphore(uint32_t imageIndex) const
+grfx::Semaphore* Swapchain::GetPresentationReadySemaphore(uint32_t imageIndex) const
 {
-    grfx::SemaphorePtr object;
-    GetPresentationReadySemaphore(imageIndex, &object);
-    return object;
+    return mPresentationReadySemaphores[imageIndex];
 }
 
 Result Swapchain::AcquireNextImage(

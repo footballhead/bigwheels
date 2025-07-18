@@ -494,6 +494,8 @@ void FoveationBenchmarkApp::Render()
     RecordRenderCommands();
     RecordPostCommands(imageIndex);
 
+    // TODO: what is the correct fix for this app? mSync.postCompleteSemaphore != GetSwapchain()->GetPresentationReadySemaphore
+
     grfx::SubmitInfo submitInfo     = {};
     submitInfo.commandBufferCount   = 1;
     submitInfo.ppCommandBuffers     = &mRender.cmd;
