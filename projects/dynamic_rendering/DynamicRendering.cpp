@@ -214,16 +214,18 @@ void DynamicRenderingApp::Render()
 
     const grfx::CommandBuffer* commands[2] = {mPreRecordedCmds[imageIndex], frame.cmd};
 
+    grfx::Semaphore* presentationReadySemaphore = swapchain->GetPresentationReadySemaphore(imageIndex);
+
     grfx::SubmitInfo submitInfo     = {};
     submitInfo.commandBufferCount   = 2;
     submitInfo.ppCommandBuffers     = commands;
     submitInfo.waitSemaphoreCount   = 1;
     submitInfo.ppWaitSemaphores     = &frame.imageAcquiredSemaphore;
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.ppSignalSemaphores   = &GetSwapchain()->GetPresentationReadySemaphore(imageIndex);
+    submitInfo.ppSignalSemaphores   = &presentationReadySemaphore;
     submitInfo.pFence               = frame.renderCompleteFence;
 
     PPX_CHECKED_CALL(GetGraphicsQueue()->Submit(&submitInfo));
 
-    PPX_CHECKED_CALL(swapchain->Present(imageIndex, 1, &GetSwapchain()->GetPresentationReadySemaphore(imageIndex)));
+    PPX_CHECKED_CALL(swapchain->Present(imageIndex, 1, &presentationReadySemaphore));
 }

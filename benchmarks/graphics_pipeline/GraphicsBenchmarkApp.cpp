@@ -1132,7 +1132,7 @@ void GraphicsBenchmarkApp::Render()
     RecordCommandBuffer(frame, renderPasses, imageIndex);
 
     // TODO: What to do about XR?
-    gfrx::Semaphore* presentationReadySemaphore = swapchain->GetPresentationReadySemaphore(imageIndex);
+    grfx::Semaphore* presentationReadySemaphore = swapchain->GetPresentationReadySemaphore(imageIndex);
 
     grfx::SubmitInfo submitInfo   = {};
     submitInfo.commandBufferCount = 1;

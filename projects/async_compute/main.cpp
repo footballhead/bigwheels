@@ -926,18 +926,20 @@ void ProjApp::BlitAndPresent(PerFrame& frame, uint32_t swapchainImageIndex)
         frame.composeData[3].completeSemaphore,
         frame.imageAcquiredSemaphore};
 
+    grfx::Semaphore* presentationReadySemaphore = GetSwapchain()->GetPresentationReadySemaphore(swapchainImageIndex);
+
     grfx::SubmitInfo submitInfo     = {};
     submitInfo.commandBufferCount   = 1;
     submitInfo.ppCommandBuffers     = &cmd;
     submitInfo.waitSemaphoreCount   = sizeof(ppWaitSemaphores) / sizeof(ppWaitSemaphores[0]);
     submitInfo.ppWaitSemaphores     = ppWaitSemaphores;
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.ppSignalSemaphores   = &GetSwapchain()->GetPresentationReadySemaphore(swapchainImageIndex);
+    submitInfo.ppSignalSemaphores   = &presentationReadySemaphore;
     submitInfo.pFence               = frame.renderCompleteFence;
 
     PPX_CHECKED_CALL(GetGraphicsQueue()->Submit(&submitInfo));
 
-    PPX_CHECKED_CALL(GetSwapchain()->Present(swapchainImageIndex, 1, &GetSwapchain()->GetPresentationReadySemaphore(swapchainImageIndex)));
+    PPX_CHECKED_CALL(GetSwapchain()->Present(swapchainImageIndex, 1, &presentationReadySemaphore));
 }
 
 void ProjApp::DrawGui()

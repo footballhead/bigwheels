@@ -936,7 +936,7 @@ void FishTornadoApp::RenderSceneUsingMultipleCommandBuffers(
         submitInfo.waitSemaphoreCount   = waitSemaphoreCount;
         submitInfo.ppWaitSemaphores     = &pWaitSemaphores;
         submitInfo.signalSemaphoreCount = 1;
-        submitInfo.ppSignalSemaphores   = &GetSwapchain()->GetPresentationReadySemaphore(imageIndex);
+        submitInfo.ppSignalSemaphores   = &presentationReadySemaphore;
 
         PPX_CHECKED_CALL(GetGraphicsQueue()->Submit(&submitInfo));
     }
@@ -950,7 +950,7 @@ void FishTornadoApp::RenderSceneUsingMultipleCommandBuffers(
         submitInfo.waitSemaphoreCount   = waitSemaphoreCount;
         submitInfo.ppWaitSemaphores     = ppWaitSemaphores;
         submitInfo.signalSemaphoreCount = 1;
-        submitInfo.ppSignalSemaphores   = &GetSwapchain()->GetPresentationReadySemaphore(imageIndex);
+        submitInfo.ppSignalSemaphores   = &presentationReadySemaphore;
 
         PPX_CHECKED_CALL(GetGraphicsQueue()->Submit(&submitInfo));
     }
@@ -977,7 +977,7 @@ void FishTornadoApp::RenderSceneUsingMultipleCommandBuffers(
         submitInfo.commandBufferCount   = 1;
         submitInfo.ppCommandBuffers     = &frame.gpuEndTimestampCmd;
         submitInfo.waitSemaphoreCount   = 1;
-        submitInfo.ppWaitSemaphores     = &GetSwapchain()->GetPresentationReadySemaphore(imageIndex);
+        submitInfo.ppWaitSemaphores     = &presentationReadySemaphore;
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.ppSignalSemaphores   = &frame.frameCompleteSemaphore;
         submitInfo.pFence               = frame.frameCompleteFence;
@@ -995,7 +995,7 @@ void FishTornadoApp::RenderSceneUsingMultipleCommandBuffers(
     {
         grfx::SubmitInfo submitInfo     = {};
         submitInfo.waitSemaphoreCount   = 1;
-        submitInfo.ppWaitSemaphores     = &GetSwapchain()->GetPresentationReadySemaphore(imageIndex);
+        submitInfo.ppWaitSemaphores     = &presentationReadySemaphore;
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.ppSignalSemaphores   = &frame.frameCompleteSemaphore;
         submitInfo.pFence               = frame.frameCompleteFence;

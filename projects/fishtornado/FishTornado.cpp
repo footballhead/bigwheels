@@ -859,6 +859,8 @@ void FishTornadoApp::RenderSceneUsingMultipleCommandBuffers(
     }
     PPX_CHECKED_CALL(frame.cmd->End());
 
+    grfx::Semaphore* presentationReadySemaphore = swapchain->GetPresentationReadySemaphore(imageIndex);
+
     // Submit render work
     {
         const grfx::Semaphore* ppWaitSemaphores[2] = {frame.imageAcquiredSemaphore, frame.shadowCompleteSemaphore};
@@ -870,7 +872,7 @@ void FishTornadoApp::RenderSceneUsingMultipleCommandBuffers(
         submitInfo.waitSemaphoreCount   = waitSemaphoreCount;
         submitInfo.ppWaitSemaphores     = ppWaitSemaphores;
         submitInfo.signalSemaphoreCount = 1;
-        submitInfo.ppSignalSemaphores   = &GetSwapchain()->GetPresentationReadySemaphore(imageIndex);
+        submitInfo.ppSignalSemaphores   = &presentationReadySemaphore;
 
         PPX_CHECKED_CALL(GetGraphicsQueue()->Submit(&submitInfo));
     }
@@ -891,13 +893,15 @@ void FishTornadoApp::RenderSceneUsingMultipleCommandBuffers(
     }
     PPX_CHECKED_CALL(frame.gpuEndTimestampCmd->End());
 
+    // TODO: fix me!
+
     // Submit GPU write end timestamp
     {
         grfx::SubmitInfo submitInfo     = {};
         submitInfo.commandBufferCount   = 1;
         submitInfo.ppCommandBuffers     = &frame.gpuEndTimestampCmd;
         submitInfo.waitSemaphoreCount   = 1;
-        submitInfo.ppWaitSemaphores     = &GetSwapchain()->GetPresentationReadySemaphore(imageIndex);
+        submitInfo.ppWaitSemaphores     = &presentationReadySemaphore;
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.ppSignalSemaphores   = &frame.frameCompleteSemaphore;
         submitInfo.pFence               = frame.frameCompleteFence;
@@ -909,7 +913,7 @@ void FishTornadoApp::RenderSceneUsingMultipleCommandBuffers(
     {
         grfx::SubmitInfo submitInfo     = {};
         submitInfo.waitSemaphoreCount   = 1;
-        submitInfo.ppWaitSemaphores     = &GetSwapchain()->GetPresentationReadySemaphore(imageIndex);
+        submitInfo.ppWaitSemaphores     = &presentationReadySemaphore;
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.ppSignalSemaphores   = &frame.frameCompleteSemaphore;
         submitInfo.pFence               = frame.frameCompleteFence;

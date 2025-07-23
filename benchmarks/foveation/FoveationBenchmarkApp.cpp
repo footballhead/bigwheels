@@ -502,7 +502,7 @@ void FoveationBenchmarkApp::Render()
     submitInfo.waitSemaphoreCount   = 1;
     submitInfo.ppWaitSemaphores     = &mSync.imageAcquiredSemaphore;
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.ppSignalSemaphores   = &GetSwapchain()->GetPresentationReadySemaphore(imageIndex);
+    submitInfo.ppSignalSemaphores   = &presentationReadySemaphore;
     submitInfo.pFence               = nullptr;
 
     PPX_CHECKED_CALL(GetGraphicsQueue()->Submit(&submitInfo));
@@ -511,7 +511,7 @@ void FoveationBenchmarkApp::Render()
     submitInfo.commandBufferCount   = 1;
     submitInfo.ppCommandBuffers     = &mPost.cmd;
     submitInfo.waitSemaphoreCount   = 1;
-    submitInfo.ppWaitSemaphores     = &GetSwapchain()->GetPresentationReadySemaphore(imageIndex);
+    submitInfo.ppWaitSemaphores     = &presentationReadySemaphore;
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.ppSignalSemaphores   = &mSync.postCompleteSemaphore;
     submitInfo.pFence               = mSync.postCompleteFence;

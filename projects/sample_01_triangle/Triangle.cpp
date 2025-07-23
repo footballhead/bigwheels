@@ -162,7 +162,7 @@ void TriangleApp::Render()
     }
     PPX_CHECKED_CALL(frame.cmd->End());
 
-    grfx::SemaphorePtr presentationReadySemaphore = swapchain->GetPresentationReadySemaphore(imageIndex);
+    grfx::Semaphore* presentationReadySemaphore = swapchain->GetPresentationReadySemaphore(imageIndex);
 
     grfx::SubmitInfo submitInfo     = {};
     submitInfo.commandBufferCount   = 1;

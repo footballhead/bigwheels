@@ -348,18 +348,20 @@ void ProjApp::Render()
     }
     PPX_CHECKED_CALL(frame.cmd->End());
 
+    grfx::Semaphore* presentationReadySemaphore = swapchain->GetPresentationReadySemaphore(imageIndex);
+
     grfx::SubmitInfo submitInfo     = {};
     submitInfo.commandBufferCount   = 1;
     submitInfo.ppCommandBuffers     = &frame.cmd;
     submitInfo.waitSemaphoreCount   = 1;
     submitInfo.ppWaitSemaphores     = &frame.imageAcquiredSemaphore;
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.ppSignalSemaphores   = &GetSwapchain()->GetPresentationReadySemaphore(imageIndex);
+    submitInfo.ppSignalSemaphores   = &presentationReadySemaphore;
     submitInfo.pFence               = frame.renderCompleteFence;
 
     PPX_CHECKED_CALL(GetGraphicsQueue()->Submit(&submitInfo));
 
-    PPX_CHECKED_CALL(swapchain->Present(imageIndex, 1, &GetSwapchain()->GetPresentationReadySemaphore(imageIndex)));
+    PPX_CHECKED_CALL(swapchain->Present(imageIndex, 1, &presentationReadySemaphore));
 }
 
 int main(int argc, char** argv)
