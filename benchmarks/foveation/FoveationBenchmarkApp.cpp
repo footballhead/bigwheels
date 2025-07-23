@@ -80,6 +80,7 @@ void FoveationBenchmarkApp::SetupSync()
 {
     grfx::SemaphoreCreateInfo semaCreateInfo = {};
     PPX_CHECKED_CALL(GetDevice()->CreateSemaphore(&semaCreateInfo, &mSync.imageAcquiredSemaphore));
+    PPX_CHECKED_CALL(GetDevice()->CreateSemaphore(&semaCreateInfo, &mSync.renderCompleteSemaphore));
     PPX_CHECKED_CALL(GetDevice()->CreateSemaphore(&semaCreateInfo, &mSync.postCompleteSemaphore));
 
     grfx::FenceCreateInfo fenceCreateInfo = {};
@@ -494,15 +495,13 @@ void FoveationBenchmarkApp::Render()
     RecordRenderCommands();
     RecordPostCommands(imageIndex);
 
-    // TODO: what is the correct fix for this app? mSync.postCompleteSemaphore != GetSwapchain()->GetPresentationReadySemaphore
-
     grfx::SubmitInfo submitInfo     = {};
     submitInfo.commandBufferCount   = 1;
     submitInfo.ppCommandBuffers     = &mRender.cmd;
     submitInfo.waitSemaphoreCount   = 1;
     submitInfo.ppWaitSemaphores     = &mSync.imageAcquiredSemaphore;
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.ppSignalSemaphores   = &presentationReadySemaphore;
+    submitInfo.ppSignalSemaphores   = &mSync.renderCompleteSemaphore;
     submitInfo.pFence               = nullptr;
 
     PPX_CHECKED_CALL(GetGraphicsQueue()->Submit(&submitInfo));
@@ -511,13 +510,14 @@ void FoveationBenchmarkApp::Render()
     submitInfo.commandBufferCount   = 1;
     submitInfo.ppCommandBuffers     = &mPost.cmd;
     submitInfo.waitSemaphoreCount   = 1;
-    submitInfo.ppWaitSemaphores     = &presentationReadySemaphore;
+    submitInfo.ppWaitSemaphores     = &mSync.renderCompleteSemaphore;
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.ppSignalSemaphores   = &mSync.postCompleteSemaphore;
     submitInfo.pFence               = mSync.postCompleteFence;
 
     PPX_CHECKED_CALL(GetGraphicsQueue()->Submit(&submitInfo));
 
+    // TODO: what is the correct fix for this app?
     PPX_CHECKED_CALL(GetSwapchain()->Present(imageIndex, 1, &mSync.postCompleteSemaphore));
 
     if (GetFrameCount() == static_cast<uint64_t>(GetStandardOptions().pScreenshotFrameNumber->GetValue())) {
