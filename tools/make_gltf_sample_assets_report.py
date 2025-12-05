@@ -137,6 +137,7 @@ def main():
                       help='Directory to store the generated report.')
   args = parser.parse_args()
 
+  print('Making report...')
   os.mkdir(args.output)
   _make_report(args.input, args.model_index, args.output)
 
