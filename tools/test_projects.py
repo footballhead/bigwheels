@@ -11,7 +11,7 @@ import stat
 import sys
 
 
-LOGGER = logging.getLogger(__name__)
+LOGGER = logging.getLogger()
 
 # Tests to skip and why. The key is the test name (executable stem). The value
 # is a URL to a GitHub issue explaining the issue.
@@ -19,6 +19,8 @@ KNOWN_ISSUES: dict[str, str] = {
     "vk_push_descriptors": "https://github.com/google/bigwheels/issues/512",
     "vk_dynamic_rendering": "https://github.com/google/bigwheels/issues/592",
     "vk_timeline_semaphore": "https://github.com/google/bigwheels/issues/593",
+    "dx12_gltf_basic_materials": "https://github.com/google/bigwheels/issues/589",
+    "dx12_dynamic_rendering": "https://github.com/google/bigwheels/issues/449",
 }
 
 
