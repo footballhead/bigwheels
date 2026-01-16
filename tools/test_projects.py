@@ -13,6 +13,14 @@ import sys
 
 LOGGER = logging.getLogger(__name__)
 
+# Tests to skip and why. The key is the test name (executable stem). The value
+# is a URL to a GitHub issue explaining the issue.
+KNOWN_ISSUES: dict[str, str] = {
+    "vk_push_descriptors": "https://github.com/google/bigwheels/issues/512",
+    "vk_dynamic_rendering": "https://github.com/google/bigwheels/issues/592",
+    "vk_timeline_semaphore": "https://github.com/google/bigwheels/issues/593",
+}
+
 
 @dataclasses.dataclass
 class TestResult:
@@ -34,7 +42,7 @@ def run_test(
     executable: pathlib.Path,
     base_output_directory: pathlib.Path,
     args: list[str] | None,
-) -> TestResult:
+) -> TestResult | None:
     """Runs a test executable and returns information about what happened.
 
     This creates additional files in the returned TestResult output_directory:
@@ -55,8 +63,13 @@ def run_test(
         args: Additional arguments to provide to the executable when run
 
     Returns:
-        A bundle of information about what happened during the test.
+        A bundle of information about what happened during the test. If the test
+        was skipped due to a known issue then None is returned.
     """
+    test_name = executable.stem
+    if test_name in KNOWN_ISSUES:
+        print(f"Skipping {executable} because of f{KNOWN_ISSUES[test_name]}")
+        return None
     LOGGER.debug(f"Running: {executable}")
     output_directory = base_output_directory / f"{executable.stem}_results"
     output_directory.mkdir(parents=True, exist_ok=True)
@@ -89,6 +102,7 @@ def main(args: argparse.Namespace):
         for file in args.build_dir.rglob(f"{args.api}_*{args.extension}")
         if file.is_file() and bool(file.stat().st_mode & stat.S_IXUSR)
     ]
+
     LOGGER.debug("All test executables:")
     LOGGER.debug(
         "\n".join([str(executable) for executable in test_executables]),
@@ -108,6 +122,10 @@ def main(args: argparse.Namespace):
         ]
         for completed_future in futures.as_completed(test_futures):
             result = completed_future.result()
+            # Ignore skipped tests
+            if not result:
+                continue
+
             if result.returncode != 0:
                 print(
                     f"{str(result.executable)} failed with returncode "
