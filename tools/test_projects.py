@@ -112,7 +112,7 @@ def main(args: argparse.Namespace):
                 print(
                     f"{str(result.executable)} failed with returncode "
                     f"{str(result.returncode)}. Look at the output in "
-                    f"{result.results_directory}"
+                    f"{result.output_directory}"
                 )
                 test_succeeded = False
 
