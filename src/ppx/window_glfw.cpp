@@ -491,6 +491,9 @@ void WindowImplGLFW::FillSurfaceInfo(grfx::SurfaceCreateInfo* pCreateInfo) const
 #elif defined(PPX_MSW)
     pCreateInfo->hinstance = ::GetModuleHandle(nullptr);
     pCreateInfo->hwnd      = glfwGetWin32Window(mNative);
+#elif defined(__APPLE__)
+    // See _glfwPlatformCreateWindowSurface in cocoa_window.m
+    pCreateInfo->window = mNative;
 #endif
 }
 

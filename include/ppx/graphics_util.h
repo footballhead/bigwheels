@@ -21,11 +21,15 @@
 #include "ppx/bitmap.h"
 #include "ppx/geometry.h"
 #include "ppx/mipmap.h"
-#include "gli/gli.hpp"
 
 #include <array>
 #include <filesystem>
 #include <type_traits>
+
+// Forward declare private details
+namespace gli {
+class texture;
+}
 
 namespace ppx {
 namespace grfx_util {

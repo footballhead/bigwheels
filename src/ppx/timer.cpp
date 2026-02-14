@@ -89,7 +89,7 @@ static TimerResult Win32SleepNanos(double nanos)
 // =============================================================================
 // SleepSeconds
 // =============================================================================
-#if defined(PPX_LINUX) || defined(PPX_ANDROID)
+#if defined(PPX_LINUX) || defined(PPX_ANDROID) || defined(__APPLE__)
 static TimerResult SleepSeconds(double seconds)
 {
     double nanos = seconds * (double)PPX_TIMER_SECONDS_TO_NANOS;
@@ -119,7 +119,7 @@ static TimerResult SleepSeconds(double seconds)
 // =============================================================================
 // SleepMillis
 // =============================================================================
-#if defined(PPX_LINUX) || defined(PPX_ANDROID)
+#if defined(PPX_LINUX) || defined(PPX_ANDROID) || defined(__APPLE__)
 TimerResult SleepMillis(double millis)
 {
     double nanos = millis * (double)PPX_TIMER_MILLIS_TO_NANOS;
@@ -149,7 +149,7 @@ static TimerResult SleepMillis(double millis)
 // =============================================================================
 // SleepMicros
 // =============================================================================
-#if defined(PPX_LINUX) || defined(PPX_ANDROID)
+#if defined(PPX_LINUX) || defined(PPX_ANDROID) || defined(__APPLE__)
 static TimerResult SleepMicros(double micros)
 {
     double nanos = micros * (double)PPX_TIMER_MICROS_TO_NANOS;
@@ -179,7 +179,7 @@ static TimerResult SleepMicros(double micros)
 // =============================================================================
 // SleepNanos
 // =============================================================================
-#if defined(PPX_LINUX) || defined(PPX_ANDROID)
+#if defined(PPX_LINUX) || defined(PPX_ANDROID) || defined(__APPLE__)
 static TimerResult SleepNanos(double nanos)
 {
     double secs = floor(nanos * (double)PPX_TIMER_NANOS_TO_SECONDS);
@@ -207,7 +207,7 @@ static TimerResult SleepNanos(double nanos)
 // =============================================================================
 // Timer::InitializeStaticData
 // =============================================================================
-#if defined(PPX_LINUX) || defined(PPX_ANDROID)
+#if defined(PPX_LINUX) || defined(PPX_ANDROID) || defined(__APPLE__)
 TimerResult Timer::InitializeStaticData()
 {
     return TIMER_RESULT_SUCCESS;
@@ -229,7 +229,7 @@ TimerResult Timer::InitializeStaticData()
 // =============================================================================
 // Timer::Timestamp
 // =============================================================================
-#if defined(PPX_LINUX) || defined(PPX_ANDROID)
+#if defined(PPX_LINUX) || defined(PPX_ANDROID) || defined(__APPLE__)
 TimerResult Timer::Timestamp(uint64_t* pTimestamp)
 {
     assert(pTimestamp != NULL);

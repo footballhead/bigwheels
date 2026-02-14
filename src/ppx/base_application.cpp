@@ -16,6 +16,8 @@
 
 #if defined(__linux__) || defined(__MINGW32__)
 #include <unistd.h>
+#elif defined(__APPLE__)
+#include <mach-o/dyld.h>
 #endif
 
 namespace ppx {
@@ -59,6 +61,12 @@ std::filesystem::path BaseApplication::GetApplicationPath() const
     HMODULE this_win32_module = GetModuleHandleA(nullptr);
     GetModuleFileNameA(this_win32_module, buf, MAX_PATH);
     path = std::filesystem::path(buf);
+#elif defined(__APPLE__)
+    uint32_t size = 0;
+    _NSGetExecutablePath(nullptr, &size);
+    std::vector<char> buffer(size);
+    _NSGetExecutablePath(buffer.data(), &size);
+    path = std::filesystem::path(buffer.data(), buffer.data() + buffer.size());
 #else
 #error "not implemented"
 #endif
@@ -93,6 +101,7 @@ std::filesystem::path BaseApplication::GetAssetPath(const std::filesystem::path&
 {
     std::filesystem::path assetPath;
     for (const auto& assetDir : mAssetDirs) {
+
         std::filesystem::path path = assetDir / subPath;
         if (ppx::fs::path_exists(path)) {
             assetPath = path;

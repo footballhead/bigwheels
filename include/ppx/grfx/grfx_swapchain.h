@@ -33,6 +33,8 @@
 #   include <Windows.h>
 #elif defined(PPX_ANDROID)
 #   include <android_native_app_glue.h>
+#elif defined(__APPLE__)
+#include <GLFW/glfw3.h>
 #endif
 // clang-format on
 
@@ -60,6 +62,9 @@ struct SurfaceCreateInfo
     HWND                  hwnd;
 #elif defined(PPX_ANDROID)
     android_app*          androidAppContext;
+#elif defined(__APPLE__)
+    // See _glfwPlatformCreateWindowSurface in cocoa_window.m
+    GLFWwindow* window;
 #endif
     // clang-format on
 };

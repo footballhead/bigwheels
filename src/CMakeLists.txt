@@ -49,7 +49,7 @@ if (PPX_VULKAN)
             get_filename_component(VULKAN_LIBRARY_DIR ${Vulkan_LIBRARIES} DIRECTORY)
         elseif (APPLE OR WIN32)
             if (DEFINED ENV{VULKAN_SDK})
-                set(VULKAN_LIBRARY_DIR "$ENV{VULKAN_SDK}/Lib")
+                set(VULKAN_LIBRARY_DIR "$ENV{VULKAN_SDK}/lib")
             endif()
         endif()
     endif()
@@ -550,6 +550,14 @@ if (PPX_BUILD_XR)
     )
 endif()
 
+
+target_compile_options(ppx PRIVATE
+    # stb_image_write uses snprintf which Xcode doesn't like
+    -Wno-deprecated-declarations
+    # https://github.com/g-truc/gli/pull/195
+    -Wno-missing-template-arg-list-after-template-kw
+)
+
 # ------------------------------------------------------------------------------
 # Link libraries
 # ------------------------------------------------------------------------------
@@ -646,6 +654,10 @@ if (PPX_VULKAN)
     elseif (PPX_MSW)
         target_link_libraries(${PROJECT_NAME}
             PUBLIC "${VULKAN_LIBRARY_DIR}/vulkan-1.lib"
+        )
+    else()
+        target_link_libraries(${PROJECT_NAME}
+            PUBLIC "${VULKAN_LIBRARY_DIR}/libvulkan.dylib"
         )
     endif()
 endif()

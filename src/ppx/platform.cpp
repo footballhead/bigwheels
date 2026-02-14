@@ -17,6 +17,8 @@
 
 #if defined(PPX_ANDROID)
 // TODO: Fill out ANDROID-specific header
+#elif defined(__APPLE__)
+// TODO: macOS
 #else
 #include "cpuinfo_x86.h"
 #endif
@@ -34,6 +36,7 @@ static Platform sPlatform = Platform();
 // -------------------------------------------------------------------------------------------------
 #if defined(PPX_ANDROID)
 // TODO: Fill out ANDROID-specific info
+#elif defined(__APPLE__)
 #else
 const char* GetX86LongMicroarchitectureName(cpu_features::X86Microarchitecture march)
 {
@@ -123,6 +126,7 @@ Platform::Platform()
 {
 #if defined(PPX_ANDROID)
     // Call ANDROID-specific function
+#elif defined(__APPLE__)
 #else
     mCpuInfo = GetX86CpuInfo();
 #endif

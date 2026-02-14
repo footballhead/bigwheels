@@ -53,6 +53,12 @@ Result Surface::CreateApiObjects(const grfx::SurfaceCreateInfo* pCreateInfo)
         &createInfo,
         nullptr,
         &mSurface);
+#elif defined(__APPLE__)
+    vkres = glfwCreateWindowSurface(ToApi(
+        GetInstance())->GetVkInstance(),
+        pCreateInfo->window,
+        nullptr,
+        &mSurface);
 #elif defined(PPX_LINUX_XLIB)
 #error "Xlib not implemented"
 #elif defined(PPX_LINUX_WAYLAND)

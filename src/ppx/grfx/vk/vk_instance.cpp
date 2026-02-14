@@ -166,6 +166,10 @@ Result Instance::ConfigureLayersAndExtensions(const grfx::InstanceCreateInfo* pC
 
     mExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 
+#ifdef __APPLE__
+    mExtensions.push_back("VK_KHR_portability_enumeration");
+#endif
+
     // Debug layer and extension
     if (pCreateInfo->enableDebug) {
         mLayers.push_back(VK_LAYER_KHRONOS_VALIDATION_NAME);
@@ -185,6 +189,8 @@ Result Instance::ConfigureLayersAndExtensions(const grfx::InstanceCreateInfo* pC
         mExtensions.push_back(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
 #elif defined(PPX_MSW)
         mExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+#elif defined(__APPLE__)
+        mExtensions.push_back("VK_EXT_metal_surface");
 #endif
     }
 
@@ -377,8 +383,23 @@ Result Instance::CreateApiObjects(const grfx::InstanceCreateInfo* pCreateInfo)
     applicationInfo.engineVersion      = 0;
     applicationInfo.apiVersion         = vkVersion;
 
-    VkInstanceCreateInfo vkci    = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
-    vkci.flags                   = 0;
+    VkDebugUtilsMessengerCreateInfoEXT debug_create_info = {VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
+    debug_create_info.messageSeverity |= VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
+    debug_create_info.messageSeverity |= VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
+    debug_create_info.messageSeverity |= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
+    debug_create_info.messageSeverity |= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    debug_create_info.messageType |= VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT;
+    debug_create_info.messageType |= VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+    debug_create_info.messageType |= VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    debug_create_info.pfnUserCallback = vk::DebugUtilsMessengerCallback;
+
+    VkInstanceCreateInfo vkci = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
+    vkci.pNext                = &debug_create_info;
+#ifdef __APPLE__
+    vkci.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+#else
+    vkci.flags = 0;
+#endif
     vkci.pApplicationInfo        = &applicationInfo;
     vkci.enabledLayerCount       = CountU32(layers);
     vkci.ppEnabledLayerNames     = DataPtr(layers);
